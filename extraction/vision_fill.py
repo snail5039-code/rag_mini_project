@@ -49,6 +49,12 @@ PROMPTS = {
         f"사진, 장식, 아이콘, 로고, 캐릭터처럼 검색에 쓸 정보가 없으면 {DECORATIVE} 한 단어만 출력하라."
     ),
 }
+
+
+def select:
+    pass
+
+
 # 텍스트 레이어가 없어 OCR 로 읽은 글 영역: 띄어쓰기·로마숫자(Ⅰ, Ⅱ) 등을 바로잡아 그대로 옮겨 적기
 PROMPTS["text"] = PROMPTS["title"] = PROMPTS["caption"] = COMMON + (
     " 이 이미지는 문서의 글 영역이다. 보이는 글자를 줄바꿈과 띄어쓰기까지 원문 그대로 옮겨 적어라. "

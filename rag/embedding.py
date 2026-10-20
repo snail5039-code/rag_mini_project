@@ -67,7 +67,10 @@ class CachedQueryEmbedder:
     def __init__(self, embedder: GeminiEmbedder | None = None, path=config.ROOT / ".cache" / "query_embeddings.json"):
         import json
 
+        import threading
+
         self._json = json
+        self._lock = threading.Lock()
         self.embedder = embedder or GeminiEmbedder()
         self.path = path
         self.cache = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
@@ -78,8 +81,11 @@ class CachedQueryEmbedder:
 
     def embed_query(self, text: str) -> list[float]:
         key = self._key(text)
-        if key not in self.cache:
-            self.cache[key] = self.embedder.embed_query(text)
+        if key in self.cache:
+            return self.cache[key]
+        vec = self.embedder.embed_query(text)
+        with self._lock:  # 여러 스레드가 동시에 파일을 쓰지 않게 한다
+            self.cache[key] = vec
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.path.write_text(self._json.dumps(self.cache), encoding="utf-8")
-        return self.cache[key]
+        return vec

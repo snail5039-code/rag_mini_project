@@ -22,6 +22,8 @@ from psycopg.types.json import Jsonb
 
 from rag import config, db
 from rag.basic_rag import BasicRAG
+from rag.multi_agent import MultiAgentRAG
+from rag.retrieval import BM25Retriever
 from rag.embedding import CachedQueryEmbedder
 
 FILES = {"base": "positive_cases.jsonl", "negative": "negative_cases.jsonl",
@@ -114,21 +116,34 @@ def summarize(results: list[dict]) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--pipeline", choices=["basic", "multi"], default="basic")
     ap.add_argument("--sets", nargs="+", default=list(FILES))
+    ap.add_argument("--cases", nargs="+", help="특정 case_id만 실행")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()
 
-    cases = load_cases(args.sets)[: args.limit] if args.limit else load_cases(args.sets)
+    cases = load_cases(args.sets)
+    if args.cases:
+        cases = [c for c in cases if c["case_id"] in set(args.cases)]
+    if args.limit:
+        cases = cases[: args.limit]
     conn = db.connect()
     db.init_schema(conn)
     embedder = CachedQueryEmbedder()
     for c in cases:  # 질문 임베딩을 먼저 채워 두고(캐시) 스레드에서는 읽기만 한다
         embedder.embed_query(c["question"])
 
+    bm25 = BM25Retriever(conn, config.BASELINE_EXPERIMENT) if args.pipeline == "multi" else None
+
+    def make():
+        if args.pipeline == "multi":
+            return MultiAgentRAG(db.connect(), embedder, bm25)
+        return BasicRAG(db.connect(), embedder)
+
     def work(case):
-        local = BasicRAG(db.connect(), embedder)
+        local = make()
         try:
             rec = local.run(case["question"], case["question_set"])
             return {"case": case, "record": rec, "checks": check(case, rec)}
@@ -144,7 +159,8 @@ def main() -> None:
                 print(f"  {i}/{len(cases)}")
     results.sort(key=lambda r: r["case"]["case_id"])
     summary = summarize(results)
-    params = BasicRAG(conn, embedder).params()
+    pipeline = "multi_agent" if args.pipeline == "multi" else "basic_rag"
+    params = make().params()
 
     print(f"\n문항 {len(results)}개, 오류 {summary['errors']}개")
     for r in [r for r in results if r.get("error")][:5]:
@@ -160,9 +176,9 @@ def main() -> None:
 
     if args.no_save:
         return
-    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__basic_rag"
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__{pipeline}"
     conn.execute("INSERT INTO rag_runs (run_id, pipeline, params, summary) VALUES (%s, %s, %s, %s)",
-                 (run_id, "basic_rag", Jsonb(params), Jsonb(summary)))
+                 (run_id, pipeline, Jsonb(params), Jsonb(summary)))
     with conn.cursor() as cur:
         cur.executemany(
             """INSERT INTO rag_case_results (run_id, case_id, question_set, question, response_type, answer,

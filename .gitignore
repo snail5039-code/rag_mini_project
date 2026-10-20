@@ -1,0 +1,5 @@
+.env
+04_extracted/crops/
+04_extracted/vision_cache/
+logs/
+__pycache__/

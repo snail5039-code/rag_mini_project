@@ -299,3 +299,108 @@ def build_pos(cases, first_no, md_title, required_terms_docs=(), n_negative=6, n
     for p in (q_path, jsonl_path, md_path, v_path):
         print(f"team_golden_set/{p.relative_to(team)}  ({p.stat().st_size:,} bytes)")
     return cases
+
+
+# ---------------------------------------------------------------------------
+# 기본 negative 세트 (NEG041~): 제공 NEG001~040과 같은 필드에 source_files/source_pages/source_locator를 더했다.
+# ---------------------------------------------------------------------------
+NEG_KEYS = ["case_id", "category", "difficulty", "expected_behavior", "expected_source_ids",
+            "source_files", "source_pages", "source_locator", "must_include", "must_not_include",
+            "question", "reference_answer", "set"]
+
+
+def build_neg(cases, first_no, md_title, n_adversarial=3, absent_terms=(), notes=(), name="negative"):
+    """case 필드: source_files([]도 가능), source_pages({파일명: [쪽]}), evidence([(파일명, 구절)] - 근거가 있는 경우만)."""
+    root = find_project_root()
+    team = root / "team_golden_set"
+    q_dir, a_dir, v_dir = team / "02_questions", team / "03_answers", team / "verification"
+    for d in (q_dir, a_dir, v_dir):
+        d.mkdir(parents=True, exist_ok=True)
+    provided = load_jsonl(root / "03_answers" / "negative_cases.jsonl")
+    extracted = root / "04_extracted" / "extracted_pages.jsonl"
+    if not extracted.is_file():
+        extracted = root / "artifacts" / "extracted_pages.jsonl"
+    pages, n_pages = {}, {}
+    for row in load_jsonl(extracted):
+        f = Path(row["file_name"]).name
+        pages[(f, row["page_no"])] = "\n".join(b["text"] for b in row["blocks"])
+        n_pages[f] = max(n_pages.get(f, 0), row["page_no"])
+
+    for i, c in enumerate(cases):
+        c["case_id"] = f"NEG{first_no + i:03d}"
+        c["set"] = "negative"
+        c["expected_source_ids"] = [f"{Path(f).stem}-pdf-{p}" for f in c["source_files"] for p in c["source_pages"][f]]
+
+    report, failures = [], []
+
+    def check(ok, message):
+        report.append(f"- {'✅' if ok else '❌'} {message}")
+        print(("OK   " if ok else "FAIL ") + message)
+        if not ok:
+            failures.append(message)
+
+    for c in cases:
+        check(all(k in c for k in NEG_KEYS), f"{c['case_id']} 필수 필드 {len(NEG_KEYS)}개")
+    ids = [c["case_id"] for c in cases]
+    check(len(set(ids)) == len(ids) and not set(ids) & {r["case_id"] for r in provided},
+          f"case_id {ids[0]}~{ids[-1]}가 서로·제공 세트(NEG001~{first_no - 1:03d})와 겹치지 않음")
+    check(all(set(c["source_pages"]) == set(c["source_files"]) and
+              all(1 <= p <= n_pages.get(f, 0) for f in c["source_files"] for p in c["source_pages"][f])
+              for c in cases), "source_pages가 각 PDF 쪽수 안")
+    n_adv = sum(c["difficulty"] == "adversarial" for c in cases)
+    check(n_adv == n_adversarial, f"adversarial {n_adv}개 (목표 {n_adversarial})")
+    cats = {}
+    for c in cases:
+        cats[c["category"]] = cats.get(c["category"], 0) + 1
+    report.append("- ℹ️ 카테고리 분포: " + ", ".join(f"{k} {v}" for k, v in cats.items()))
+
+    provided_q = [(r["case_id"], r["question"]) for r in provided]
+    for c in cases:
+        best = max(provided_q, key=lambda x: difflib.SequenceMatcher(None, c["question"], x[1]).ratio())
+        ratio = difflib.SequenceMatcher(None, c["question"], best[1]).ratio()
+        check(ratio < 0.5, f"{c['case_id']} 가장 비슷한 제공 질문 {best[0]} (유사도 {ratio:.2f})")
+
+    quote_rows = []
+    for c in cases:
+        for f, q in c["evidence"]:
+            page_text = normalize("\n".join(pages[(f, p)] for p in c["source_pages"][f]))
+            found = normalize(q) in page_text
+            quote_rows.append((c["case_id"], f, q, found))
+            check(found, f"{c['case_id']} 근거 구절 「{q}」 → {f} {c['source_pages'][f]}쪽 추출 텍스트에 {'있음' if found else '없음 (PDF 원문으로 직접 확인)'}")
+
+    for t in absent_terms:
+        hits = [(f, p) for (f, p), text in pages.items() if normalize(t) in normalize(text)]
+        check(not hits, f"핵심어 「{t}」가 23개 PDF 어디에도 없음" + (f" (히트: {hits[:5]})" if hits else ""))
+
+    if failures:
+        raise SystemExit(f"검증 실패 {len(failures)}건 — 저장하지 않고 중단합니다.")
+
+    q_path = q_dir / f"{name}_questions.json"
+    q_path.write_text(json.dumps(
+        [{"case_id": c["case_id"], "difficulty": c["difficulty"], "question": c["question"]} for c in cases],
+        ensure_ascii=False, indent=2), encoding="utf-8")
+    jsonl_path = a_dir / f"{name}_cases.jsonl"
+    with jsonl_path.open("w", encoding="utf-8") as f:
+        for c in cases:
+            f.write(json.dumps({k: c[k] for k in NEG_KEYS}, ensure_ascii=False) + "\n")
+    lines = [f"# {md_title} - 팀 골든셋", "",
+             "기준 답안은 유일한 정답 문장이 아닙니다. 같은 의미의 정확한 답변도 가능합니다.", ""]
+    for c in cases:
+        src = " / ".join(f"{f} · PDF {', '.join(str(p) for p in c['source_pages'][f])}쪽" for f in c["source_files"]) or "근거 문서 없음(문서에 없는 질문)"
+        lines += [f"## {c['case_id']} · {c['category']} · {c['expected_behavior']}", "",
+                  f"**질문** {c['question']}", "", f"**기준 답안** {c['reference_answer']}", "",
+                  f"근거: {src} · {c['source_locator']}", "",
+                  "확인할 내용:", *[f"- {x}" for x in c["must_include"]], "",
+                  "피해야 할 오류:", *[f"- {x}" for x in c["must_not_include"]], ""]
+    md_path = a_dir / f"{name}_cases.md"
+    md_path.write_text("\n".join(lines), encoding="utf-8")
+    v = [f"# {md_title} 새 질문 검증", "", "## 자동 검사 결과", *report, "",
+         "## 근거 구절 (PDF 원문과 대조)", "",
+         "| case_id | 파일 | 근거 구절 | 추출 텍스트에 있음 | 사람이 PDF 원문 확인 |", "|---|---|---|---|---|"]
+    v += [f"| {cid} | {f} | {q} | {'예' if ok else '아니오'} | ☐ |" for cid, f, q, ok in quote_rows]
+    v += ["", "## 참고", *[f"- {n}" for n in notes]]
+    v_path = v_dir / f"{name}_cases.md"
+    v_path.write_text("\n".join(v), encoding="utf-8")
+    for p in (q_path, jsonl_path, md_path, v_path):
+        print(f"team_golden_set/{p.relative_to(team)}  ({p.stat().st_size:,} bytes)")
+    return cases

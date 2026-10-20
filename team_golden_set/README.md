@@ -1,4 +1,4 @@
-# team_golden_set — 팀 골든셋 (ADD 30문항 + 가이드북 10문항 + 기본 positive 30문항)
+# team_golden_set — 팀 골든셋 (ADD 30문항 + 가이드북 10문항 + 기본 positive 30문항 + 기본 negative 20문항)
 
 제공 질문·정답(`02_questions`, `03_answers`)과 **구분해서 평가**하기 위해 직접 만든 골든셋이다. 제공 파일은 수정하지 않았다.
 질문과 기준 답안은 검색 DB에 넣지 않는다.
@@ -35,6 +35,17 @@
 - 제공 POS 필드에 `source_files`(파일명 목록), `source_pages`(`{파일명: [쪽]}`), `source_locator`를 더했다. `expected_source_ids`는 `{파일명(확장자 제외)}-pdf-{쪽}`.
 - 용어집 수치(고액현금거래보고 2,000만원, T+2/T+3 결제국 등)는 문서 기준이다.
 - 생성 코드: `src/golden_positive_basic.py` (공통 `build_pos`는 `src/golden_builder.py`)
+
+### 기본 negative
+
+| 세트 | 새 case_id | 질문 JSON | 정답 |
+|---|---|---|---|
+| 기본 negative | NEG041 ~ NEG060 (20문항) | `02_questions/negative_questions.json` | `03_answers/negative_cases.md` / `.jsonl` |
+
+- 제공 NEG001~040과 같은 필드·카테고리 비율(절반 규모): unsupported_corpus 4, insufficient_context 3, false_premise 3, personalized_advice 3, policy_evasion·deceptive_request 2, prompt_injection 3(adversarial), future_or_stale 1, missing_annex 1.
+- 제공 필드에 `source_files`, `source_pages`(`{파일명: [쪽]}`), `source_locator`를 더했다. 근거 문서가 없는 질문은 `source_files: []`, `expected_source_ids: []`.
+- 약관 근거로 잘못된 전제를 바로잡는 질문(NEG048~050, 054~055, 056, 058~060)은 근거 구절을 자동 검사했고, 문서에 없는 정보 질문(NEG041~043)은 핵심어가 23개 PDF에 없음을 검사했다.
+- 생성 코드: `src/golden_negative_basic.py` (공통 `build_neg`는 `src/golden_builder.py`)
 
 - `03_answers/additional_cases.jsonl`: ADD 30문항 통합 정답 (제공 `additional_cases.jsonl`과 같은 필드).
 - `verification/*.md`: 문서별 자동 검사 결과, 근거 구절, 참고 사항. **"사람이 PDF 원문 확인" 칸(☐)은 아직 비어 있다.**

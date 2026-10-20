@@ -1,4 +1,4 @@
-# team_golden_set — 팀 골든셋 (ADD 6개 문서, 30문항)
+# team_golden_set — 팀 골든셋 (ADD 6개 문서 30문항 + 가이드북 10문항)
 
 제공 질문·정답(`02_questions`, `03_answers`)과 **구분해서 평가**하기 위해 직접 만든 골든셋이다. 제공 파일은 수정하지 않았다.
 질문과 기준 답안은 검색 DB에 넣지 않는다.
@@ -14,7 +14,17 @@
 | housing_pension_2026 | ADD-HP11 ~ 15 | `02_questions/housing_pension_2026_questions.json` | `03_answers/housing_pension_2026_answers.md` |
 | policy_finance_debt_adjustment_2026 | ADD-PF11 ~ 15 | `02_questions/policy_finance_debt_adjustment_2026_questions.json` | `03_answers/policy_finance_debt_adjustment_2026_answers.md` |
 
-- `03_answers/additional_cases.jsonl`: 30문항 통합 정답 (제공 `additional_cases.jsonl`과 같은 필드).
+### 금융생활 가이드북 (`financial_life_guide.pdf`)
+
+| 세트 | 새 case_id | 질문 JSON | 정답 |
+|---|---|---|---|
+| 가이드북 positive | POS081 ~ POS090 (10문항, 2문항은 답할 수 없는 질문: POS086, POS090) | `02_questions/positive_life_guide_questions.json` | `03_answers/positive_life_guide_cases.md` / `.jsonl` |
+
+- 제공 가이드북 세트(POS061~080)와 같은 필드·순서이며 `source_file` 필드는 없다. `expected_source_ids`는 `fss-life-guide-pdf-{쪽}`.
+- 이 PDF는 한 쪽에 책 2쪽(펼침면)이 들어 있어 `source_pages`(PDF 뷰어 기준)와 책에 인쇄된 쪽번호가 다르다. `source_locator`에 인쇄 쪽을 함께 적었다.
+- 생성 코드: `src/golden_life_guide.py`
+
+- `03_answers/additional_cases.jsonl`: ADD 30문항 통합 정답 (제공 `additional_cases.jsonl`과 같은 필드).
 - `verification/*.md`: 문서별 자동 검사 결과, 근거 구절, 참고 사항. **"사람이 PDF 원문 확인" 칸(☐)은 아직 비어 있다.**
 - `new_golden_set.md`: 작업 계획과 결정 사항.
 

@@ -3,3 +3,7 @@
 04_extracted/vision_cache/
 logs/
 __pycache__/
+
+.venv/
+05_chunks/
+.cache/

@@ -28,8 +28,8 @@ def database_url() -> str:
 
 
 def connect() -> psycopg.Connection:
+    # vector 확장은 init_schema에서 만든다(여러 스레드가 동시에 CREATE EXTENSION을 하면 충돌한다).
     conn = psycopg.connect(database_url(), autocommit=True)
-    conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
     register_vector(conn)
     return conn
 

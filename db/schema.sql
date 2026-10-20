@@ -61,3 +61,25 @@ CREATE TABLE IF NOT EXISTS retrieval_eval_cases (
     metrics       JSONB NOT NULL,
     PRIMARY KEY (run_id, case_id)
 );
+
+-- RAG 실행 기록. run 1개 = (파이프라인, 설정) 한 번 실행. 문항별 기록은 agent_traces.jsonl로도 내보낸다.
+CREATE TABLE IF NOT EXISTS rag_runs (
+    run_id     TEXT PRIMARY KEY,
+    pipeline   TEXT NOT NULL,          -- basic_rag / multi_agent
+    params     JSONB NOT NULL,
+    summary    JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS rag_case_results (
+    run_id        TEXT NOT NULL REFERENCES rag_runs (run_id) ON DELETE CASCADE,
+    case_id       TEXT NOT NULL,
+    question_set  TEXT NOT NULL,
+    question      TEXT NOT NULL,
+    response_type TEXT,
+    answer        TEXT,
+    record        JSONB NOT NULL,      -- 인용, 검색 청크, trace, 사용량 전체
+    checks        JSONB,               -- 코드 기반 1차 채점
+    error         TEXT,
+    PRIMARY KEY (run_id, case_id)
+);

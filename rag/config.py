@@ -34,3 +34,20 @@ LIFE_GUIDE_KEY = "fss-life-guide"   # 기준 답안의 근거 ID 접두어
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "gemini-embedding-2")
 # pgvector의 vector 타입 HNSW 인덱스는 약 2,000차원까지만 지원한다.
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1536"))
+
+# --- 답변 생성 -------------------------------------------------------------
+GENERATION_MODEL = os.getenv("GENERATION_MODEL", "gemini-3.6-flash")
+
+# --- 검색 기준 설정 (eval_retrieval 비교 결과로 확정) ----------------------
+BASELINE_EXPERIMENT = os.getenv(
+    "BASELINE_EXPERIMENT", f"parent_child_300_60__{EMBEDDING_MODEL}_{EMBEDDING_DIM}")
+CHILD_K = 8
+MAX_PARENTS = 5
+
+# 질문 세트별 검색 범위 (README: 기본 positive/negative는 용어집+약관만 검색)
+SCOPE_GROUPS = {
+    "base": ("glossary", "standard_terms"),
+    "negative": ("glossary", "standard_terms"),
+    "life": ("life_guide",),
+    "add": ("additional",),
+}

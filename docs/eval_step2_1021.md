@@ -10,7 +10,7 @@ Judge·Ragas 모델은 답변 모델과 다른 `gemini-3.8-flash`(temperature 0)
 | C. 경로 평가 | `scripts/eval_trajectory.py` | `*__trajectory*.jsonl`, `*__trajectory.summary.json` |
 | 사람 보정 표본 30문항 | - | `judge_calibration_sample.md` (사람 판단 칸 비어 있음) |
 
-## A. LLM Judge (0~1로 환산, 정확성은 0/1/2 ÷ 2)
+## A. LLM Judge (0에서 1로 환산, 정확성은 0/1/2 ÷ 2)
 
 | 지표 | 기본 RAG 전체 | Multi-Agent 전체 | 기본 제공 | MA 제공 | 기본 팀 | MA 팀 |
 |---|---:|---:|---:|---:|---:|---:|
@@ -33,7 +33,7 @@ Judge·Ragas 모델은 답변 모델과 다른 `gemini-3.8-flash`(temperature 0)
 | FactualCorrectness | 0.529 | 0.499 |
 | ContextRecall | 0.831 | 0.859 |
 
-- Judge와의 상관: 정확성 0.28(기본), -0.30(MA). 일치하지 않는다. Ragas의 FactualCorrectness는 주장 단위 F1이라 기준 답안이 짧은 제공 positive에서 낮게 나온다(제공 0.30~0.41, 팀 0.64~0.70).
+- Judge와의 상관: 정확성 0.28(기본), -0.30(MA). 일치하지 않는다. Ragas의 FactualCorrectness는 주장 단위 F1이라 기준 답안이 짧은 제공 positive에서 낮게 나온다(제공 0.30에서 0.41, 팀 0.64에서 0.70).
 - 따라서 Ragas는 절대 점수보다 **Judge 점수가 크게 어긋나는 문항을 찾는 교차 확인**으로만 쓴다.
 
 ## C. 경로 평가 (Multi-Agent 270문항)

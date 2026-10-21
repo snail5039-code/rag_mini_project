@@ -136,6 +136,7 @@ def main() -> None:
     ap.add_argument("--answer-style", choices=["plain", "parts", "parts_guide"], default="parts_guide",
                     help="Multi-Agent 답변 방식 (parts: 질문 요소 점검표 후 답변)")
     ap.add_argument("--review", action="store_true", help="Multi-Agent 답변 뒤 검토 Agent 실행")
+    ap.add_argument("--answer-model", default=config.GENERATION_MODEL, help="Multi-Agent 답변 Agent 모델")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--no-save", action="store_true")
@@ -156,7 +157,8 @@ def main() -> None:
 
     def make():
         if args.pipeline == "multi":
-            return MultiAgentRAG(db.connect(), embedder, bm25, answer_style=args.answer_style, review=args.review)
+            return MultiAgentRAG(db.connect(), embedder, bm25, answer_style=args.answer_style, review=args.review,
+                                 answer_model=args.answer_model)
         return BasicRAG(db.connect(), embedder)
 
     def work(case):

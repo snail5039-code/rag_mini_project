@@ -166,10 +166,12 @@ class MultiAgentRAG:
     def __init__(self, conn, embedder, bm25: BM25Retriever | None = None,
                  experiment_id: str = config.BASELINE_EXPERIMENT,
                  child_k: int = config.CHILD_K, max_parents: int = config.MAX_PARENTS,
-                 answer_style: str = "parts_guide", review: bool = False):
+                 answer_style: str = "parts_guide", review: bool = False,
+                 answer_model: str = config.GENERATION_MODEL):
         """answer_style: parts_guide(기본, v5: 점검표+보류·되묻기 안내 규칙) / parts(v4: 점검표) / plain(v3)"""
         self.answer_style = answer_style
         self.review_enabled = review
+        self.answer_model = answer_model   # 답변 Agent만 다른 모델을 쓸 수 있다 (나머지 Agent는 GENERATION_MODEL)
         self.conn, self.embedder, self.experiment_id = conn, embedder, experiment_id
         self.child_k, self.max_parents = child_k, max_parents
         self.vector = VectorRetriever(conn, experiment_id)
@@ -181,7 +183,7 @@ class MultiAgentRAG:
         return {"experiment_id": self.experiment_id, "child_k": self.child_k, "max_parents_per_query": self.max_parents,
                 "max_context_parents": MAX_CONTEXT_PARENTS, "max_search_rounds": MAX_SEARCH_ROUNDS,
                 "generation_model": config.GENERATION_MODEL, "answer_style": self.answer_style,
-                "review": self.review_enabled,
+                "review": self.review_enabled, "answer_model": self.answer_model,
                 "prompts": {"evaluate": EVALUATE_PROMPT, "feedback": FEEDBACK_PROMPT,
                             "improve": IMPROVE_PROMPT, "answer": self._answer_prompt(),
                             "review": REVIEW_PROMPT if self.review_enabled else None}}
@@ -260,7 +262,7 @@ class MultiAgentRAG:
         user = (f"{format_documents(parents)}\n\n<evaluation>\n{state['evaluation']}\n"
                 f"stop_reason={reason}\n</evaluation>\n\n<question>\n{state['question']}\n</question>")
         schema = FinalAnswer if self.answer_style == "plain" else FinalAnswerWithParts
-        out, usage = generate_structured(self._answer_prompt(), user, schema)
+        out, usage = generate_structured(self._answer_prompt(), user, schema, model=self.answer_model)
         step = {"step": "answer", "stop_reason": reason, "response_type": out.response_type}
         if self.answer_style != "plain":
             step["question_parts"] = [p.model_dump() for p in out.question_parts]

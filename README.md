@@ -308,6 +308,45 @@ flowchart TD
 
 제공 세트의 절반 분량(90문항)을 새로 만들었고, 그중 14문항(positive 계열의 20%)은 문서만으로 답할 수 없는 질문입니다. 근거 구절이 추출 텍스트에 있는지, 번호·필드가 맞는지 `src/golden_*.py`가 자동 검사하고 결과를 `team_golden_set/verification/`에 남깁니다. "사람이 PDF 원문 확인" 칸은 아직 채우는 중입니다.
 
+### 제공 + 팀 골든셋 평가 (2026-10-21)
+
+같은 DB·기준 설정(Parent-Child 300/60 + Vector, `gemini-3.6-flash`, 2차 프롬프트)에서 270문항(제공 180 + 팀 90)을 실행했습니다. 제공 세트와 팀 골든셋은 따로 집계합니다.
+
+```bash
+python scripts/run_rag.py --pipeline basic --golden both
+python scripts/run_rag.py --pipeline multi --golden both
+```
+
+| 지표 | 제공 180 · 기본 RAG | 제공 180 · Multi-Agent | 팀 90 · 기본 RAG | 팀 90 · Multi-Agent |
+|---|---:|---:|---:|---:|
+| 응답 유형 (엄격) | 0.656 | **0.794** | 0.900 | 0.900 |
+| 응답 유형 (완화) | 0.944 | **0.967** | **0.944** | 0.911 |
+| 문맥 Recall | 0.906 | **0.922** | 0.947 | **0.962** |
+| 인용 Hit | 0.946 | **0.986** | 0.772 | **0.899** |
+| 인용 Recall | 0.858 | **0.894** | 0.738 | **0.863** |
+| 평균 토큰 | 3,210 | 7,369 | 3,145 | 8,236 |
+| 평균 응답 시간 | 7.0초 | 13.5초 | 6.0초 | 13.6초 |
+
+결과 파일: `06_results/rag/20261021_094418__basic_rag__both_golden.*`, `06_results/rag/20261021_093905__multi_agent__both_golden.*`
+
+- 제공 세트 점수는 전날 실행과 거의 같아(Multi-Agent 엄격 0.800 → 0.794, 기본 RAG 0.661 → 0.656) DB·임베딩을 새로 만들어도 재현됐습니다.
+- 제공 세트에서는 Multi-Agent가 모든 지표에서 앞서고, 추가 PDF 엄격 점수가 0.350 → 0.683으로 크게 올랐습니다. 대신 토큰은 약 2.3배, 시간은 약 1.9배입니다.
+- 팀 골든셋에서는 인용 정확도는 Multi-Agent가 높지만(인용 Hit 0.772 → 0.899), 응답 유형은 같거나 낮습니다.
+
+**팀 골든셋에서 Multi-Agent가 틀린 9문항**
+
+| 유형 | 문항 | 현상 | 원인 |
+|---|---|---|---|
+| 보류해야 하는데 `answer` | ADD-HF15, ADD-HP15, ADD-IN15, ADD-PF15, POS086, POS099, POS120 | 답변 본문에는 "문서에서 확인할 수 없다"고 정확히 쓰지만 응답 유형을 `answer`(`correct`)로 붙임. 기본 RAG는 대부분 `abstain` | 2차 답변 프롬프트의 "근거 일부만 확인되면 answer, abstain은 근거가 전혀 없을 때만" 규칙. 제공 세트 2차 하락의 원인으로도 추정 |
+| 되물어야 하는데 답함 | NEG046 | "약관이 바뀌면 언제부터 적용돼?"에 대상 약관을 묻지 않고 답함 | 평가 Agent가 `ambiguous`로 판정하지 않음 |
+| 거절해야 하는데 보류 | NEG052 | DC형 적립금을 ELW에 전부 넣는 질문에 `refuse` 대신 `abstain` | `refuse`와 `abstain` 경계 |
+
+**해석할 때 주의할 점**
+
+- 팀 골든셋의 "답할 수 없는 질문"에도 관련 근거 페이지가 적혀 있어, 올바르게 보류해도 인용이 없어 인용 Hit가 낮아집니다(8문항). 팀 세트의 인용 점수는 실제보다 낮게 나옵니다.
+- 팀 골든셋은 기본 세트 근거 ID가 `{파일명}-pdf-{쪽}` 형식이라, `run_rag.py`가 청크의 파일·페이지로 근거를 비교합니다.
+- 팀 골든셋과 가이드북·추가 세트의 `must_include`는 문장으로 풀어 쓴 기준이라 글자 일치 점수(`must`)는 0에 가깝습니다. 답변 내용은 Ragas·LLM Judge로 따로 평가합니다.
+
 ## 실행 방법
 
 PostgreSQL에 pgvector 확장이 필요합니다. `.env`에 `GEMINI_API_KEY`와 `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`(또는 `DATABASE_URL`)를 설정합니다.
@@ -328,9 +367,9 @@ python scripts/load_chunks.py --method parent_child_300_60
 # 3. 검색 평가
 python scripts/eval_retrieval.py --experiments parent_child_300_60
 
-# 4. RAG 실행·채점
+# 4. RAG 실행·채점 (--golden team 또는 both로 팀 골든셋 포함)
 python scripts/run_rag.py --pipeline basic
-python scripts/run_rag.py --pipeline multi
+python scripts/run_rag.py --pipeline multi --golden both
 ```
 
 ## 진행 상황
@@ -343,8 +382,8 @@ python scripts/run_rag.py --pipeline multi
 5. 기본 RAG 구현 및 평가                완료
 6. Multi-Agent RAG 구현 및 평가         완료 (1차·2차)
 7. 팀 골든셋 작성·자동 검사             완료 (사람 검수 진행 중)
-8. 팀 골든셋으로 Agent 평가             예정
-9. 실패 원인 분석과 개선                예정 (2차 strict 하락, 추출 오류 후보 3건)
+8. 팀 골든셋으로 Agent 평가             완료 (제공 180 + 팀 90)
+9. 실패 원인 분석과 개선                진행 중 (보류 판단 프롬프트, 추출 오류 후보 3건)
 10. 답변 품질(Ragas)·Trajectory 평가    예정
 ```
 

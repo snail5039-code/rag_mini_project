@@ -29,6 +29,29 @@ from rag.embedding import CachedQueryEmbedder
 FILES = {"base": "positive_cases.jsonl", "negative": "negative_cases.jsonl",
          "life": "positive_life_guide_cases.jsonl", "add": "additional_cases.jsonl"}
 OUT_DIR = config.ROOT / "06_results" / "rag"
+# 제공 세트(03_answers)와 팀 골든셋(team_golden_set/03_answers)은 같은 파일 이름·형식이다.
+GOLDEN_DIRS = {"provided": config.ANSWERS_DIR, "team": config.ROOT / "team_golden_set" / "03_answers"}
+
+
+def _parent_pages() -> dict[str, tuple[str, int, int]]:
+    """parent_id -> (file_name, page_no, page_end). 실행 기록의 delivered_parents에는 페이지가 없어 청크 파일에서 찾는다."""
+    method = config.BASELINE_EXPERIMENT.split("__")[0]
+    path = config.CHUNK_DIR / f"{method}.parents.jsonl"
+    pages = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            p = json.loads(line)
+            pages[p["parent_id"]] = (p["file_name"], p["page_no"], p.get("page_end") or p["page_no"])
+    return pages
+
+
+PARENT_PAGES = _parent_pages()
+
+
+def page_ids(file_name: str, page_no: int, page_end: int | None) -> set[str]:
+    """팀 골든셋의 '{파일명}-pdf-{쪽}' 형식 근거 ID. 용어집·약관도 파일+페이지로 비교할 수 있게 한다."""
+    stem = Path(file_name).stem
+    return {f"{stem}-pdf-{p}" for p in range(page_no, (page_end or page_no) + 1)}
 
 
 def allowed_types(expected: str) -> list[str]:
@@ -62,8 +85,13 @@ def norm(s: str) -> str:
 def check(case: dict, rec: dict) -> dict:
     allowed = allowed_types(case["expected_behavior"])
     gold = set(case.get("expected_source_ids") or [])
+    # 청크 source_ids에 파일-페이지 ID를 더한다 (제공 세트의 용어·조항 ID와 형식이 달라 서로 영향이 없다)
     cited = {sid for c in rec["citations"] for sid in c["source_ids"]}
+    cited |= {sid for c in rec["citations"] for sid in page_ids(c["file_name"], c["page_no"], c.get("page_end"))}
     delivered = {sid for p in rec["delivered_parents"] for sid in p["source_ids"]}
+    for p in rec["delivered_parents"]:
+        if p["parent_id"] in PARENT_PAGES:
+            delivered |= page_ids(*PARENT_PAGES[p["parent_id"]])
     out = {
         "behavior_strict": rec["response_type"] == allowed[0],
         "behavior_lenient": rec["response_type"] in allowed,
@@ -78,11 +106,12 @@ def check(case: dict, rec: dict) -> dict:
     return out
 
 
-def load_cases(sets: list[str]) -> list[dict]:
+def load_cases(sets: list[str], goldens: list[str] = ("provided",)) -> list[dict]:
     cases = []
-    for qset in sets:
-        for line in (config.ANSWERS_DIR / FILES[qset]).read_text(encoding="utf-8").splitlines():
-            cases.append({**json.loads(line), "question_set": qset})
+    for golden in goldens:
+        for qset in sets:
+            for line in (GOLDEN_DIRS[golden] / FILES[qset]).read_text(encoding="utf-8").splitlines():
+                cases.append({**json.loads(line), "question_set": qset, "golden": golden})
     return cases
 
 
@@ -91,10 +120,13 @@ def summarize(results: list[dict]) -> dict:
     for r in results:
         if r.get("error"):
             continue
+        golden = r["case"].get("golden", "provided")
+        prefix = "" if golden == "provided" else f"{golden}:"  # 제공 세트는 기존 키 이름을 유지한다
         by["all"].append(r)
-        by[f"set:{r['case']['question_set']}"].append(r)
+        by[f"golden:{golden}"].append(r)
+        by[f"{prefix}set:{r['case']['question_set']}"].append(r)
         if r["case"]["question_set"] == "negative":
-            by[f"neg:{r['case']['category']}"].append(r)
+            by[f"{prefix}neg:{r['case']['category']}"].append(r)
     summary = {}
     for g, rs in by.items():
         keys = sorted({k for r in rs for k in r["checks"]})
@@ -118,13 +150,16 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline", choices=["basic", "multi"], default="basic")
     ap.add_argument("--sets", nargs="+", default=list(FILES))
+    ap.add_argument("--golden", choices=["provided", "team", "both"], default="provided",
+                    help="provided: 제공 180문항, team: 팀 골든셋 90문항, both: 둘 다 (요약은 따로 집계)")
     ap.add_argument("--cases", nargs="+", help="특정 case_id만 실행")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()
 
-    cases = load_cases(args.sets)
+    goldens = ["provided", "team"] if args.golden == "both" else [args.golden]
+    cases = load_cases(args.sets, goldens)
     if args.cases:
         cases = [c for c in cases if c["case_id"] in set(args.cases)]
     if args.limit:
@@ -176,7 +211,8 @@ def main() -> None:
 
     if args.no_save:
         return
-    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__{pipeline}"
+    suffix = "" if args.golden == "provided" else f"__{args.golden}_golden"
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__{pipeline}{suffix}"
     conn.execute("INSERT INTO rag_runs (run_id, pipeline, params, summary) VALUES (%s, %s, %s, %s)",
                  (run_id, pipeline, Jsonb(params), Jsonb(summary)))
     with conn.cursor() as cur:
@@ -191,6 +227,7 @@ def main() -> None:
     with open(OUT_DIR / f"{run_id}.jsonl", "w", encoding="utf-8") as fh:
         for r in results:
             fh.write(json.dumps({"run_id": run_id, "case_id": r["case"]["case_id"],
+                                 "golden": r["case"].get("golden", "provided"),
                                  "question_set": r["case"]["question_set"], "question": r["case"]["question"],
                                  **r.get("record", {}), "checks": r.get("checks"), "error": r.get("error")},
                                 ensure_ascii=False) + "\n")

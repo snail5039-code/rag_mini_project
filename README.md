@@ -8,6 +8,7 @@
 | [docs/pipeline.md](./docs/pipeline.md) | 파이프라인 상세 설계: 스키마, 근거 ID 매핑, 실행 기록 형식, 비교 실험, 확정 필요 항목 |
 | [docs/agent_graph.md](./docs/agent_graph.md) | Multi-Agent 그래프의 노드·종료 조건·공통 상태·미들웨어 |
 | [team_golden_set/README.md](./team_golden_set/README.md) | 팀 골든셋 구성과 검수 방법 |
+| [docs/handoff.md](./docs/handoff.md) | **인수인계**: 환경 준비(pgvector 설치 포함), 평가 실행, 남은 할 일, 평가 방법 비교 |
 
 ## 프로젝트 목표
 

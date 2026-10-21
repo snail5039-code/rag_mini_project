@@ -29,9 +29,11 @@ def main() -> None:
     ap.add_argument("--files", nargs="+", help="file_name에 이 문자열이 들어간 문서만 (예: 04_신용거래약관 glossary)")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--no-title", action="store_true", help="임베딩 입력에 제목 prefix를 붙이지 않음 (문맥 보존 실험)")
     args = ap.parse_args()
 
-    experiment_id = args.experiment or f"{args.method}__{config.EMBEDDING_MODEL}_{config.EMBEDDING_DIM}"
+    suffix = "_notitle" if args.no_title else ""
+    experiment_id = args.experiment or f"{args.method}{suffix}__{config.EMBEDDING_MODEL}_{config.EMBEDDING_DIM}"
     chunks = read_jsonl(config.CHUNK_DIR / f"{args.method}.jsonl")
     parents_path = config.CHUNK_DIR / f"{args.method}.parents.jsonl"
     parents = read_jsonl(parents_path) if parents_path.exists() else []
@@ -44,7 +46,7 @@ def main() -> None:
         keep = {c["parent_id"] for c in chunks}
         parents = [p for p in parents if p["parent_id"] in keep]
 
-    texts = [embed_text(c["section_title"], c["content"]) for c in chunks]
+    texts = [c["content"] if args.no_title else embed_text(c["section_title"], c["content"]) for c in chunks]
     chars = sum(map(len, texts))
     print(f"experiment_id={experiment_id}\nchild/청크 {len(chunks)}개, parent {len(parents)}개, 임베딩 입력 {chars:,}자")
     if args.dry_run:

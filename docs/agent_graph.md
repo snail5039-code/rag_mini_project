@@ -1,6 +1,7 @@
 # Multi-Agent RAG 그래프 구조
 
 구현: [`rag/multi_agent.py`](../rag/multi_agent.py) (LangGraph). 기본 RAG와의 비교 기준선은 [`rag/basic_rag.py`](../rag/basic_rag.py)입니다.
+현재 기본값은 **v7**입니다(답변 Agent: 질문 요소 점검표 + 보류·되묻기 안내 규칙, 모델 `gemini-3.7-flash`). 버전별 결과는 [report.md](report.md)를 보세요.
 
 ```mermaid
 flowchart TD
@@ -12,6 +13,8 @@ flowchart TD
     E -- "insufficient<br/>(횟수 소진 · 새 근거 없음)" --> A
     F --> I[개선 Agent<br/>새 검색어 1~3개 · 검색기 선택]
     I --> S
+    A -. "--review (미채택)" .-> R[답변 검토 Agent<br/>빠진 조건·예외 보완]
+    R -.-> END
     A --> END([종료: answer / correct / clarify / abstain / refuse])
 ```
 
@@ -24,7 +27,8 @@ flowchart TD
 | 평가 Agent | LLM | 질문 + 누적 문서 → `sufficient` / `insufficient` / `ambiguous` / `out_of_scope` / `inappropriate`, 부족한 정보 목록 |
 | 피드백 Agent | LLM | 평가 결과 + 사용한 검색어 + 검색된 제목 → 부족 원인, 찾아야 할 근거 |
 | 개선 Agent | LLM | 피드백 → 새 검색어 1~3개, 검색기(`vector` / `hybrid`) |
-| 답변 Agent | LLM | 질문 + 문서 + 평가 → 최종 응답 유형, 답변, 인용 문서 번호 |
+| 답변 Agent | LLM (`gemini-3.7-flash`) | 질문 + 문서 + 평가 → ① 질문 요소 점검표(요소별 근거: 조건·기한·예외·미이행 시 결과) ② 최종 응답 유형, 답변, 인용 문서 번호. 보류·되묻기·거절 때는 빠진 정보, 문서로 확인할 수 없는 이유, 확인할 곳을 반드시 적음 |
+| 답변 검토 Agent (선택) | LLM | 답변 초안 + 문서 → 빠진 조건·예외·구별을 보완한 답변. 실험 결과 효과가 없어 기본으로 끔(`--review`) |
 
 ## 종료 조건
 

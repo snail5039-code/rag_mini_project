@@ -6,6 +6,21 @@
 
 > 이 문서의 값(child 크기, 재검색 횟수 N, `max_parents` 등)은 **제안 초안**입니다. 실험 결과로 바뀔 수 있고, 확정이 필요한 항목은 마지막 장에 모았습니다.
 
+## 현재 최종 설정 (v7)
+
+실험으로 확정한 설정입니다. 실험 과정과 수치는 [report.md](report.md), 실행 방법은 [how_to_run.md](how_to_run.md)를 보세요.
+
+| 구성 | 설정 | 근거 |
+|---|---|---|
+| 청킹 | Parent-Child (parent: 용어·조항·소제목 구조 단위, child: ~300자·겹침 60, 제목 prefix) | 검색 Hit@5 0.993 (Recursive 최고 0.921) |
+| 검색 | child Vector(cosine) top 8 → parent 최대 5개 | Vector가 BM25·Hybrid·MMR보다 높음 (용어형·상황형 질문 모두) |
+| 임베딩 | `gemini-embedding-2`, 1536차원 | pgvector HNSW 2,000차원 한도 |
+| 파이프라인 | Multi-Agent (평가 → 피드백 → 개선 → 재검색 최대 2회) | 기본 RAG 대비 골든셋 Judge 정확성 0.694 → 0.794 |
+| 답변 Agent | 질문 요소 점검표 + 보류·되묻기 안내 규칙, `gemini-3.7-flash` | 제공 세트 Judge 정확성 0.906~0.922 |
+| 나머지 Agent | `gemini-3.6-flash` | |
+
+아래 본문은 설계 당시의 계획이며, 위 표와 다른 부분은 위 표가 최종입니다.
+
 **담당** (기획서 기준): PDF 추출 박의혁 / 청킹·임베딩과 Multi-Agent RAG 정원하 / 골든셋 QA 한용님
 
 ---

@@ -54,6 +54,21 @@ class FinalAnswer(BaseModel):
     reason: str
 
 
+class QuestionPart(BaseModel):
+    part: str = Field(description="질문이 묻는 하위 요소 하나 (전제가 틀렸다면 그 전제도 하나의 요소)")
+    evidence: str = Field(description="이 요소에 답하는 문서 내용 요약: 조건·기한·예외·미이행 시 결과 포함. 없으면 '문서에 없음'")
+    docs: list[int] = Field(description="근거 문서 번호")
+
+
+class FinalAnswerWithParts(BaseModel):
+    """답변 전에 질문을 하위 요소로 나누고 요소별 근거를 먼저 적게 해 요소 누락을 줄인다."""
+    question_parts: list[QuestionPart] = Field(description="답변 전에 작성하는 질문 요소 점검표")
+    response_type: ResponseType
+    answer: str = Field(description="question_parts의 모든 요소에 순서대로 답하는 한국어 답변")
+    citations: list[int] = Field(description="답변에 사용한 문서 번호(1부터)")
+    reason: str
+
+
 EVALUATE_PROMPT = f"""당신은 검색 결과 평가 Agent입니다. 질문과 검색 문서를 보고 다음 중 하나를 판정합니다.
 - sufficient   : 문서만으로 질문의 모든 요소에 답할 수 있음 (잘못된 전제를 문서로 바로잡을 수 있는 경우 포함)
 - insufficient : 관련 문서는 있지만 질문의 일부 요소(다른 조항, 다른 제도, 계산 근거 등)를 확인할 근거가 빠짐 -> 재검색 필요
@@ -73,6 +88,13 @@ IMPROVE_PROMPT = f"""당신은 개선 Agent입니다. 피드백을 바탕으로 
 - 부족한 근거 하나에 검색어 하나(최대 3개). 질문을 그대로 반복하지 말고, 약관 조항 제목이나 용어집 표제어처럼 문서에 나올 표현을 씁니다.
 - 이미 쓴 검색어와 같은 검색어는 쓰지 않습니다.
 {COMMON_RULES}"""
+
+ANSWER_PARTS_RULES = """
+답변 순서:
+1. question_parts에 질문이 묻는 요소를 빠짐없이 나눕니다. 질문 속 잘못된 전제·오해도 하나의 요소로 둡니다.
+2. 요소마다 문서에서 관련 조건·기한·금액·예외와 '이행하지 않으면 어떻게 되는지'까지 찾아 evidence에 적습니다.
+3. answer는 모든 요소에 순서대로 답합니다. 오해를 바로잡을 때는 올바른 내용과 함께 사용자가 실제로 확인할 것(본인 계약·보증 종류, 담당 기관 등)도 안내합니다.
+4. 문서에 없는 요소는 그 요소만 문서에서 확인할 수 없다고 적습니다."""
 
 ANSWER_PROMPT = f"""당신은 답변 Agent입니다. 제공된 <documents>만 근거로 한국어로 답합니다.
 <evaluation>의 판정을 따르되, 문서를 직접 확인해 response_type을 최종 결정합니다.
@@ -117,7 +139,10 @@ class MultiAgentRAG:
 
     def __init__(self, conn, embedder, bm25: BM25Retriever | None = None,
                  experiment_id: str = config.BASELINE_EXPERIMENT,
-                 child_k: int = config.CHILD_K, max_parents: int = config.MAX_PARENTS):
+                 child_k: int = config.CHILD_K, max_parents: int = config.MAX_PARENTS,
+                 answer_style: str = "parts"):
+        """answer_style: parts(기본, v4: 질문 요소 점검표를 먼저 작성) / plain(v3)"""
+        self.answer_style = answer_style
         self.conn, self.embedder, self.experiment_id = conn, embedder, experiment_id
         self.child_k, self.max_parents = child_k, max_parents
         self.vector = VectorRetriever(conn, experiment_id)
@@ -128,9 +153,12 @@ class MultiAgentRAG:
     def params(self) -> dict:
         return {"experiment_id": self.experiment_id, "child_k": self.child_k, "max_parents_per_query": self.max_parents,
                 "max_context_parents": MAX_CONTEXT_PARENTS, "max_search_rounds": MAX_SEARCH_ROUNDS,
-                "generation_model": config.GENERATION_MODEL,
+                "generation_model": config.GENERATION_MODEL, "answer_style": self.answer_style,
                 "prompts": {"evaluate": EVALUATE_PROMPT, "feedback": FEEDBACK_PROMPT,
-                            "improve": IMPROVE_PROMPT, "answer": ANSWER_PROMPT}}
+                            "improve": IMPROVE_PROMPT, "answer": self._answer_prompt()}}
+
+    def _answer_prompt(self) -> str:
+        return ANSWER_PROMPT + (ANSWER_PARTS_RULES if self.answer_style == "parts" else "")
 
     # -------------------------------------------------------------- 노드
     def orchestrator(self, state: State) -> State:
@@ -197,10 +225,13 @@ class MultiAgentRAG:
         reason = self.stop_reason(state)
         user = (f"{format_documents(parents)}\n\n<evaluation>\n{state['evaluation']}\n"
                 f"stop_reason={reason}\n</evaluation>\n\n<question>\n{state['question']}\n</question>")
-        out, usage = generate_structured(ANSWER_PROMPT, user, FinalAnswer)
+        schema = FinalAnswerWithParts if self.answer_style == "parts" else FinalAnswer
+        out, usage = generate_structured(self._answer_prompt(), user, schema)
+        step = {"step": "answer", "stop_reason": reason, "response_type": out.response_type}
+        if self.answer_style == "parts":
+            step["question_parts"] = [p.model_dump() for p in out.question_parts]
         return {"final": out.model_dump(), "usage": _add_usage(state, usage), "stop_reason": reason,
-                "trace": state["trace"] + [{"step": "answer", "stop_reason": reason,
-                                            "response_type": out.response_type}]}
+                "trace": state["trace"] + [step]}
 
     # -------------------------------------------------------------- 분기 (오케스트레이터의 종료 조건)
     @staticmethod

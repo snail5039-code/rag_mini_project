@@ -37,6 +37,8 @@ EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1536"))
 
 # --- 답변 생성 -------------------------------------------------------------
 GENERATION_MODEL = os.getenv("GENERATION_MODEL", "gemini-3.6-flash")
+# Multi-Agent 답변 Agent 모델. 제공 180문항 2회 Judge 정확성 0.922/0.906 (3.6-flash 0.894/0.897)
+ANSWER_MODEL = os.getenv("ANSWER_MODEL", "gemini-3.7-flash")
 
 # --- 검색 기준 설정 (eval_retrieval 비교 결과로 확정) ----------------------
 BASELINE_EXPERIMENT = os.getenv(

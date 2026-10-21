@@ -167,7 +167,7 @@ class MultiAgentRAG:
                  experiment_id: str = config.BASELINE_EXPERIMENT,
                  child_k: int = config.CHILD_K, max_parents: int = config.MAX_PARENTS,
                  answer_style: str = "parts_guide", review: bool = False,
-                 answer_model: str = config.GENERATION_MODEL):
+                 answer_model: str = config.ANSWER_MODEL):
         """answer_style: parts_guide(기본, v5: 점검표+보류·되묻기 안내 규칙) / parts(v4: 점검표) / plain(v3)"""
         self.answer_style = answer_style
         self.review_enabled = review

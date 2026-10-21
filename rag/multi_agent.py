@@ -96,6 +96,32 @@ ANSWER_PARTS_RULES = """
 3. answer는 모든 요소에 순서대로 답합니다. 오해를 바로잡을 때는 올바른 내용과 함께 사용자가 실제로 확인할 것(본인 계약·보증 종류, 담당 기관 등)도 안내합니다.
 4. 문서에 없는 요소는 그 요소만 문서에서 확인할 수 없다고 적습니다."""
 
+class Review(BaseModel):
+    missing_points: list[str] = Field(description="문서에 있고 질문과 직접 관련되는데 초안에 빠진 조건·예외·구별·결과·확인할 일")
+    unsupported_claims: list[str] = Field(description="초안 중 문서로 뒷받침되지 않는 주장 (없으면 빈 목록)")
+    response_type: ResponseType
+    answer: str = Field(description="보완한 최종 답변 (빠진 점이 없으면 초안 그대로)")
+    citations: list[int] = Field(description="최종 답변에 사용한 문서 번호(1부터)")
+    reason: str
+
+
+REVIEW_PROMPT = f"""당신은 답변 검토 Agent입니다. 질문, 검색 문서, 답변 초안을 비교해 초안을 보완합니다.
+1. 문서에 있고 질문과 직접 관련되는데 초안이 빠뜨린 것을 찾습니다: 적용 조건, 예외, 비슷해 보이는 개념의 구별,
+   기한을 지키지 않거나 조건을 못 갖췄을 때의 결과, 사용자가 실제로 확인할 일.
+2. 문서로 뒷받침되지 않는 주장은 지웁니다.
+3. 빠진 점을 넣어 answer를 다시 씁니다. 질문과 관계없는 내용은 덧붙이지 않고, 빠진 점이 없으면 초안을 그대로 둡니다.
+4. response_type은 초안이 명백히 잘못된 경우에만 바꿉니다.
+{COMMON_RULES}"""
+
+
+ANSWER_GUIDE_RULES = """
+보류·되묻기·거절할 때는 다음 세 가지를 반드시 적습니다.
+(1) 답하려면 무엇이 더 필요한지 구체적으로: 상품·약관 이름, 계약서류를 받은 날, 계좌·보증 종류 등
+(2) 왜 이 문서들로 확인할 수 없는지: 회사별 별첨에서 정하는 값, 문서 기준일 이후의 제도·수치, 개인 계약·계좌 정보, 문서에 없는 상품 등
+(3) 어디서 확인할 수 있는지: 해당 금융회사의 약관과 별첨, 공식 공시, 담당 기관
+문서에 관련 조항이 있으면 그 조항이 무엇을 정하고 무엇을 정하지 않는지도 함께 알려 줍니다.
+개인 맞춤 추천을 거절할 때는 일반적인 상품 특성·위험과 스스로 판단할 때 볼 요소를 안내합니다."""
+
 ANSWER_PROMPT = f"""당신은 답변 Agent입니다. 제공된 <documents>만 근거로 한국어로 답합니다.
 <evaluation>의 판정을 따르되, 문서를 직접 확인해 response_type을 최종 결정합니다.
 - answer : 문서 근거로 답함 / correct : 질문의 전제가 문서와 달라 근거를 들어 바로잡음
@@ -140,9 +166,10 @@ class MultiAgentRAG:
     def __init__(self, conn, embedder, bm25: BM25Retriever | None = None,
                  experiment_id: str = config.BASELINE_EXPERIMENT,
                  child_k: int = config.CHILD_K, max_parents: int = config.MAX_PARENTS,
-                 answer_style: str = "parts"):
-        """answer_style: parts(기본, v4: 질문 요소 점검표를 먼저 작성) / plain(v3)"""
+                 answer_style: str = "parts_guide", review: bool = False):
+        """answer_style: parts_guide(기본, v5: 점검표+보류·되묻기 안내 규칙) / parts(v4: 점검표) / plain(v3)"""
         self.answer_style = answer_style
+        self.review_enabled = review
         self.conn, self.embedder, self.experiment_id = conn, embedder, experiment_id
         self.child_k, self.max_parents = child_k, max_parents
         self.vector = VectorRetriever(conn, experiment_id)
@@ -154,11 +181,18 @@ class MultiAgentRAG:
         return {"experiment_id": self.experiment_id, "child_k": self.child_k, "max_parents_per_query": self.max_parents,
                 "max_context_parents": MAX_CONTEXT_PARENTS, "max_search_rounds": MAX_SEARCH_ROUNDS,
                 "generation_model": config.GENERATION_MODEL, "answer_style": self.answer_style,
+                "review": self.review_enabled,
                 "prompts": {"evaluate": EVALUATE_PROMPT, "feedback": FEEDBACK_PROMPT,
-                            "improve": IMPROVE_PROMPT, "answer": self._answer_prompt()}}
+                            "improve": IMPROVE_PROMPT, "answer": self._answer_prompt(),
+                            "review": REVIEW_PROMPT if self.review_enabled else None}}
 
     def _answer_prompt(self) -> str:
-        return ANSWER_PROMPT + (ANSWER_PARTS_RULES if self.answer_style == "parts" else "")
+        prompt = ANSWER_PROMPT
+        if self.answer_style in ("parts", "parts_guide"):
+            prompt += ANSWER_PARTS_RULES
+        if self.answer_style == "parts_guide":
+            prompt += ANSWER_GUIDE_RULES
+        return prompt
 
     # -------------------------------------------------------------- 노드
     def orchestrator(self, state: State) -> State:
@@ -225,13 +259,26 @@ class MultiAgentRAG:
         reason = self.stop_reason(state)
         user = (f"{format_documents(parents)}\n\n<evaluation>\n{state['evaluation']}\n"
                 f"stop_reason={reason}\n</evaluation>\n\n<question>\n{state['question']}\n</question>")
-        schema = FinalAnswerWithParts if self.answer_style == "parts" else FinalAnswer
+        schema = FinalAnswer if self.answer_style == "plain" else FinalAnswerWithParts
         out, usage = generate_structured(self._answer_prompt(), user, schema)
         step = {"step": "answer", "stop_reason": reason, "response_type": out.response_type}
-        if self.answer_style == "parts":
+        if self.answer_style != "plain":
             step["question_parts"] = [p.model_dump() for p in out.question_parts]
         return {"final": out.model_dump(), "usage": _add_usage(state, usage), "stop_reason": reason,
                 "trace": state["trace"] + [step]}
+
+    def review(self, state: State) -> State:
+        draft = state["final"]
+        user = (f"{format_documents(state['parents'])}\n\n<question>\n{state['question']}\n</question>\n\n"
+                f"<draft response_type=\"{draft['response_type']}\" citations=\"{draft['citations']}\">\n"
+                f"{draft['answer']}\n</draft>")
+        out, usage = generate_structured(REVIEW_PROMPT, user, Review)
+        final = {"response_type": out.response_type, "answer": out.answer, "citations": out.citations,
+                 "reason": out.reason, "draft": draft}
+        return {"final": final, "usage": _add_usage(state, usage),
+                "trace": state["trace"] + [{"step": "review", "missing_points": out.missing_points,
+                                            "unsupported_claims": out.unsupported_claims,
+                                            "draft_type": draft["response_type"], "response_type": out.response_type}]}
 
     # -------------------------------------------------------------- 분기 (오케스트레이터의 종료 조건)
     @staticmethod
@@ -250,7 +297,10 @@ class MultiAgentRAG:
 
     def _build(self):
         g = StateGraph(State)
-        for name in ("orchestrator", "search", "evaluate", "feedback", "improve", "answer"):
+        nodes = ["orchestrator", "search", "evaluate", "feedback", "improve", "answer"]
+        if self.review_enabled:
+            nodes.append("review")
+        for name in nodes:
             g.add_node(name, getattr(self, name))
         g.set_entry_point("orchestrator")
         g.add_edge("orchestrator", "search")
@@ -258,7 +308,11 @@ class MultiAgentRAG:
         g.add_conditional_edges("evaluate", self.route_after_evaluate, {"answer": "answer", "feedback": "feedback"})
         g.add_edge("feedback", "improve")
         g.add_edge("improve", "search")
-        g.add_edge("answer", END)
+        if self.review_enabled:
+            g.add_edge("answer", "review")
+            g.add_edge("review", END)
+        else:
+            g.add_edge("answer", END)
         return g.compile()
 
     # -------------------------------------------------------------- 실행

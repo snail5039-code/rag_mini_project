@@ -133,8 +133,9 @@ def main() -> None:
     ap.add_argument("--answers-dir", type=Path, default=config.ANSWERS_DIR,
                     help="기준 답안 폴더 (골든셋: team_golden_set/03_answers)")
     ap.add_argument("--tag", default="", help="run_id 끝에 붙일 이름 (예: golden)")
-    ap.add_argument("--answer-style", choices=["plain", "parts"], default="parts",
+    ap.add_argument("--answer-style", choices=["plain", "parts", "parts_guide"], default="parts_guide",
                     help="Multi-Agent 답변 방식 (parts: 질문 요소 점검표 후 답변)")
+    ap.add_argument("--review", action="store_true", help="Multi-Agent 답변 뒤 검토 Agent 실행")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--no-save", action="store_true")
@@ -155,7 +156,7 @@ def main() -> None:
 
     def make():
         if args.pipeline == "multi":
-            return MultiAgentRAG(db.connect(), embedder, bm25, answer_style=args.answer_style)
+            return MultiAgentRAG(db.connect(), embedder, bm25, answer_style=args.answer_style, review=args.review)
         return BasicRAG(db.connect(), embedder)
 
     def work(case):

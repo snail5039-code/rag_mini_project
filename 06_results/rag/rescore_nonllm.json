@@ -1,0 +1,90 @@
+{
+ "기본 RAG": {
+  "all": {
+   "n": 270,
+   "n_answerable": 212,
+   "n_non_answer": 58,
+   "citation_hit_all": 0.885,
+   "citation_hit_answerable": 0.948,
+   "citation_recall_all": 0.81,
+   "citation_recall_answerable": 0.867,
+   "context_recall_all": 0.916,
+   "context_recall_answerable": 0.92,
+   "behavior_strict": 0.73,
+   "behavior_lenient": 0.941,
+   "behavior_merged": 0.941
+  },
+  "provided": {
+   "n": 180,
+   "n_answerable": 150,
+   "n_non_answer": 30,
+   "citation_hit_all": 0.946,
+   "citation_hit_answerable": 0.946,
+   "citation_recall_all": 0.848,
+   "citation_recall_answerable": 0.848,
+   "context_recall_all": 0.899,
+   "context_recall_answerable": 0.899,
+   "behavior_strict": 0.65,
+   "behavior_lenient": 0.95,
+   "behavior_merged": 0.95
+  },
+  "team": {
+   "n": 90,
+   "n_answerable": 62,
+   "n_non_answer": 28,
+   "citation_hit_all": 0.772,
+   "citation_hit_answerable": 0.952,
+   "citation_recall_all": 0.738,
+   "citation_recall_answerable": 0.914,
+   "context_recall_all": 0.947,
+   "context_recall_answerable": 0.97,
+   "behavior_strict": 0.889,
+   "behavior_lenient": 0.922,
+   "behavior_merged": 0.922
+  }
+ },
+ "Multi-Agent": {
+  "all": {
+   "n": 270,
+   "n_answerable": 212,
+   "n_non_answer": 58,
+   "citation_hit_all": 0.96,
+   "citation_hit_answerable": 0.995,
+   "citation_recall_all": 0.882,
+   "citation_recall_answerable": 0.913,
+   "context_recall_all": 0.935,
+   "context_recall_answerable": 0.936,
+   "behavior_strict": 0.83,
+   "behavior_lenient": 0.959,
+   "behavior_merged": 0.959
+  },
+  "provided": {
+   "n": 180,
+   "n_answerable": 150,
+   "n_non_answer": 30,
+   "citation_hit_all": 0.993,
+   "citation_hit_answerable": 0.993,
+   "citation_recall_all": 0.893,
+   "citation_recall_answerable": 0.893,
+   "context_recall_all": 0.918,
+   "context_recall_answerable": 0.918,
+   "behavior_strict": 0.806,
+   "behavior_lenient": 0.989,
+   "behavior_merged": 0.989
+  },
+  "team": {
+   "n": 90,
+   "n_answerable": 62,
+   "n_non_answer": 28,
+   "citation_hit_all": 0.899,
+   "citation_hit_answerable": 1.0,
+   "citation_recall_all": 0.861,
+   "citation_recall_answerable": 0.962,
+   "context_recall_all": 0.966,
+   "context_recall_answerable": 0.978,
+   "behavior_strict": 0.878,
+   "behavior_lenient": 0.9,
+   "behavior_merged": 0.9
+  }
+ }
+}

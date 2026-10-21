@@ -94,9 +94,15 @@ def classify(rec, case, judge, traj):
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--runs", nargs="+", help="라벨=run_id 형식. 생략하면 기준선 두 실행")
+    ap.add_argument("--out", default="failure_analysis.json")
+    args = ap.parse_args()
+    runs = dict(a.split("=", 1) for a in args.runs) if args.runs else RUNS
     cases = {(c["golden"], c["case_id"]): c for c in load_cases(["base", "negative", "life", "add"], ["provided", "team"])}
     result = {}
-    for label, run in RUNS.items():
+    for label, run in runs.items():
         recs = jl(OUT.parent / "rag" / f"{run}.jsonl")
         judge = {(j["golden"], j["case_id"]): j for j in jl(OUT / f"{run}__judge.jsonl")}
         traj = {}
@@ -114,7 +120,7 @@ def main() -> None:
                          "tokens": rec["usage"]["input_tokens"] + rec["usage"]["output_tokens"],
                          "elapsed_ms": rec["usage"]["elapsed_ms"], "model_calls": rec["usage"]["model_calls"]})
         result[label] = rows
-    (OUT / "failure_analysis.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+    (OUT / args.out).write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
 
     for label, rows in result.items():
         print(f"\n===== {label}: 실패 {sum(1 for r in rows if r['cause'])}/{len(rows)}")

@@ -1,0 +1,57 @@
+{
+  "run_id": "20261021_150523__multi_agent__both_golden",
+  "judge_model": "gemini-3.8-flash",
+  "expected_path_rule": "기본 4단계, 근거 ID 3개 이상 문항은 재검색 1회 경로도 허용",
+  "scope_sizes": {
+    "base": 16,
+    "negative": 16,
+    "life": 1,
+    "add": 6
+  },
+  "groups": {
+    "all": {
+      "n": 270,
+      "strict_match": 0.93,
+      "re_search_rate": 0.089,
+      "re_search_passed": 0.542,
+      "wasted_re_search": 10,
+      "max_rounds_stop": 10,
+      "scope_ok": 1.0,
+      "duplicate_queries": 0,
+      "unneeded_re_search": 9,
+      "llm_trajectory_ok": null,
+      "llm_judged": 0
+    },
+    "provided": {
+      "n": 180,
+      "strict_match": 0.95,
+      "re_search_rate": 0.072,
+      "re_search_passed": 0.385,
+      "wasted_re_search": 2,
+      "max_rounds_stop": 2,
+      "scope_ok": 1.0,
+      "duplicate_queries": 0,
+      "unneeded_re_search": 1,
+      "llm_trajectory_ok": null,
+      "llm_judged": 0
+    },
+    "team": {
+      "n": 90,
+      "strict_match": 0.889,
+      "re_search_rate": 0.122,
+      "re_search_passed": 0.727,
+      "wasted_re_search": 8,
+      "max_rounds_stop": 8,
+      "scope_ok": 1.0,
+      "duplicate_queries": 0,
+      "unneeded_re_search": 8,
+      "llm_trajectory_ok": null,
+      "llm_judged": 0
+    }
+  },
+  "path_counts": {
+    "orchestrator > search > evaluate > answer": 246,
+    "orchestrator > search > evaluate > feedback > improve > search > evaluate > answer": 13,
+    "orchestrator > search > evaluate > feedback > improve > search > evaluate > feedback > improve > search > evaluate > answer": 11
+  }
+}

@@ -254,6 +254,7 @@ class MultiAgentRAG:
             "retrieved_children": [{"chunk_id": c["chunk_id"], "parent_id": c["parent_id"],
                                     "source_ids": c["source_ids"]} for c in s["children"]],
             "delivered_parents": [{"parent_id": p["parent_id"], "source_ids": p["source_ids"],
+                                   "file_name": p["file_name"], "page_no": p["page_no"], "page_end": p["page_end"],
                                    "chars": len(p["content"])} for p in parents],
             "trace": s["trace"],
             "usage": {**s["usage"], "elapsed_ms": round((time.perf_counter() - started) * 1000)},

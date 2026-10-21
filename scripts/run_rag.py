@@ -59,11 +59,21 @@ def norm(s: str) -> str:
     return re.sub(r"\s+", "", s)
 
 
+def page_ids(item: dict) -> set[str]:
+    """파일·쪽 범위 -> 페이지 형식 근거 ID. 골든셋은 용어집·약관 근거도 `{파일명}-pdf-{쪽}`으로 적는다."""
+    if "file_name" not in item:
+        return set()
+    stem = item["file_name"].rsplit("/", 1)[-1].removesuffix(".pdf")
+    prefix = config.LIFE_GUIDE_KEY if stem == "financial_life_guide" else stem
+    return {f"{prefix}-pdf-{p}" for p in range(item["page_no"], item["page_end"] + 1)}
+
+
 def check(case: dict, rec: dict) -> dict:
     allowed = allowed_types(case["expected_behavior"])
     gold = set(case.get("expected_source_ids") or [])
-    cited = {sid for c in rec["citations"] for sid in c["source_ids"]}
-    delivered = {sid for p in rec["delivered_parents"] for sid in p["source_ids"]}
+    cited = {sid for c in rec["citations"] for sid in c["source_ids"]} | {i for c in rec["citations"] for i in page_ids(c)}
+    delivered = ({sid for p in rec["delivered_parents"] for sid in p["source_ids"]}
+                 | {i for p in rec["delivered_parents"] for i in page_ids(p)})
     out = {
         "behavior_strict": rec["response_type"] == allowed[0],
         "behavior_lenient": rec["response_type"] in allowed,
@@ -78,10 +88,10 @@ def check(case: dict, rec: dict) -> dict:
     return out
 
 
-def load_cases(sets: list[str]) -> list[dict]:
+def load_cases(sets: list[str], answers_dir: Path = config.ANSWERS_DIR) -> list[dict]:
     cases = []
     for qset in sets:
-        for line in (config.ANSWERS_DIR / FILES[qset]).read_text(encoding="utf-8").splitlines():
+        for line in (answers_dir / FILES[qset]).read_text(encoding="utf-8").splitlines():
             cases.append({**json.loads(line), "question_set": qset})
     return cases
 
@@ -93,6 +103,7 @@ def summarize(results: list[dict]) -> dict:
             continue
         by["all"].append(r)
         by[f"set:{r['case']['question_set']}"].append(r)
+        by[f"kind:{r['case']['set']}"].append(r)   # 답할 수 있는 질문(positive) / 없는 질문(negative)
         if r["case"]["question_set"] == "negative":
             by[f"neg:{r['case']['category']}"].append(r)
     summary = {}
@@ -119,12 +130,15 @@ def main() -> None:
     ap.add_argument("--pipeline", choices=["basic", "multi"], default="basic")
     ap.add_argument("--sets", nargs="+", default=list(FILES))
     ap.add_argument("--cases", nargs="+", help="특정 case_id만 실행")
+    ap.add_argument("--answers-dir", type=Path, default=config.ANSWERS_DIR,
+                    help="기준 답안 폴더 (골든셋: team_golden_set/03_answers)")
+    ap.add_argument("--tag", default="", help="run_id 끝에 붙일 이름 (예: golden)")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()
 
-    cases = load_cases(args.sets)
+    cases = load_cases(args.sets, args.answers_dir)
     if args.cases:
         cases = [c for c in cases if c["case_id"] in set(args.cases)]
     if args.limit:
@@ -160,7 +174,7 @@ def main() -> None:
     results.sort(key=lambda r: r["case"]["case_id"])
     summary = summarize(results)
     pipeline = "multi_agent" if args.pipeline == "multi" else "basic_rag"
-    params = make().params()
+    params = {**make().params(), "answers_dir": str(args.answers_dir), "cases": len(cases)}
 
     print(f"\n문항 {len(results)}개, 오류 {summary['errors']}개")
     for r in [r for r in results if r.get("error")][:5]:
@@ -176,7 +190,7 @@ def main() -> None:
 
     if args.no_save:
         return
-    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__{pipeline}"
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__{pipeline}" + (f"__{args.tag}" if args.tag else "")
     conn.execute("INSERT INTO rag_runs (run_id, pipeline, params, summary) VALUES (%s, %s, %s, %s)",
                  (run_id, pipeline, Jsonb(params), Jsonb(summary)))
     with conn.cursor() as cur:

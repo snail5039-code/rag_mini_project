@@ -7,3 +7,4 @@ __pycache__/
 .venv/
 05_chunks/
 .cache/
+.venv_ragas/

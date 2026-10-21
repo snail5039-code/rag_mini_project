@@ -69,6 +69,8 @@ def main() -> None:
         for r in ex.map(work, cases):
             if r:
                 result[r[0]] = r[1]
+    if not result:
+        raise SystemExit(f"분류 결과가 없어 저장하지 않습니다. 오류 {len(errors)}건 {errors[:2]}")
     OUT.write_text(json.dumps({"model": MODEL, "items": result}, ensure_ascii=False, indent=1), encoding="utf-8")
     n_items = sum(len(v) for v in result.values())
     n_core = sum(i["level"] == "core" for v in result.values() for i in v)

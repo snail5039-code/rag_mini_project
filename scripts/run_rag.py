@@ -184,6 +184,10 @@ def main() -> None:
             return {"case": case, "record": rec, "checks": check(case, rec)}
         except Exception as e:  # 한 문항 실패가 전체 실행을 멈추지 않게 기록한다
             return {"case": case, "error": f"{type(e).__name__}: {e}"}
+        finally:  # 병렬 실행에서 연결이 쌓여 PostgreSQL max_connections를 넘지 않게 문항마다 닫는다
+            conn_ = getattr(local, "conn", None)
+            if conn_ is not None:
+                conn_.close()
 
     results = []
     with ThreadPoolExecutor(args.workers) as pool:

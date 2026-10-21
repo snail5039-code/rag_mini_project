@@ -113,34 +113,129 @@ python scripts/run_rag.py --pipeline multi --golden team --cases POS091 NEG041 -
 
 우선순위 순서입니다. 비교 실험은 기준 설정 대비 **한 번에 한 요소만** 바꾸고 같은 질문 세트로 다시 평가합니다.
 
-### 5-1. 답변 품질 평가 방법 확정과 실행 (다음 작업)
+### 5-1. 답변 품질·경로 평가 (담당: 한용님, 다음 작업)
 
-현재 채점은 응답 유형과 인용만 봅니다. 다음 세 가지는 아직 측정하지 않습니다.
+현재 `run_rag.py`는 응답 유형과 인용만 코드로 채점합니다. 다음은 아직 측정하지 않습니다.
 
 1. 답변 내용이 기준 답안과 맞는가 (`must_include`가 문장형이라 글자 일치로는 0점 근처)
 2. 답변이 받은 문맥에만 근거했는가 (충실성, 지어낸 수치)
 3. `must_not_include`(피해야 할 오류)를 어겼는가
+4. Agent가 필요한 단계를 거치고 불필요한 재검색을 피했는가 (Trajectory)
 
-평가 방법 후보를 비교한 결과입니다. 이 PC에는 `ragas 0.4.3`, `agentevals 0.0.9`, `openevals 0.2.0`이 설치되어 있고 `deepeval`·`trulens`는 없습니다.
+이를 **A. 커스텀 LLM Judge**, **B. Ragas**, **C. 경로(Trajectory) 평가** 세 가지로 나눠 평가합니다. A가 주 지표이고, B는 A를 교차 확인하며, C는 Agent 실행 경로를 봅니다.
 
-| 방법 | 잘하는 것 | 우리 데이터에 맞는 정도 | 비고 |
-|---|---|---|---|
-| 커스텀 LLM Judge (Gemini, 고정 기준표) | 기준 답안 대비 정확성, `must_include` 의미 충족, `must_not_include` 위반, 충실성, 인용 근거 | 가장 높음. 골든셋 필드를 그대로 씀 | 직접 구현. 문항당 1회 호출. 기획서의 "기준표 고정 LLM Judge" |
-| Ragas | 충실성, 답변 정확성, 문맥 정밀도·재현율 | 중간. `must_include`·`must_not_include` 미사용 | 기본 프롬프트 영어, 문항당 여러 번 호출, 실행마다 점수 변동 |
-| DeepEval | G-Eval(커스텀 기준), 충실성, pytest 연동 | 중간~높음 | 기본 OpenAI라 Gemini 모델 클래스 연결 필요 |
-| OpenEvals | RAG용 Judge(groundedness, helpfulness, retrieval relevance) | 중간 | LangChain 모델로 Gemini 연결 쉬움, 프롬프트 영어 |
-| AgentEvals | LangGraph 실행 경로 일치(strict / unordered / subset / superset), 경로 LLM Judge | Trajectory 평가에 적합 | 경로 일치는 LLM 없이 계산, trace 형식 변환 필요 |
-| TruLens | 청크 단위 근거성, 추적 | 낮음~중간 | 추적 중심이라 오프라인 채점에는 무거움 |
-| LangSmith | 실험 비교 UI | 보조 | 계정 필요, 데이터가 외부로 업로드됨 |
+#### 공통 입력
 
-**추천 구성 (팀 결정 필요)**
+평가 대상은 같은 기준 설정에서 돌린 두 실행입니다. 둘 다 같은 방법으로 평가해야 기본 RAG와 Multi-Agent를 비교할 수 있습니다.
 
-1. 주 지표: 커스텀 LLM Judge. 답변 모델(`gemini-3.6-flash`)과 다른 Judge 모델을 쓰고, 기준표와 Judge 프롬프트를 파일로 고정해 결과와 함께 기록합니다. Multi-Agent 270문항 기준 입력 약 150만~200만 토큰입니다.
-2. Trajectory: 기록된 `search_rounds`·`stop_reason`으로 불필요한 재검색 집계, 필요하면 AgentEvals 경로 일치.
-3. 교차 확인: Ragas 충실성을 일부 문항(약 50개)에만 돌려 Judge 점수와 비교.
-4. 사람 검수: 30문항 정도를 직접 보고 Judge 기준을 보정.
+| 실행 | 파일 |
+|---|---|
+| Multi-Agent, 제공 180 + 팀 90 | `06_results/rag/20261021_093905__multi_agent__both_golden.jsonl` |
+| 기본 RAG, 제공 180 + 팀 90 | `06_results/rag/20261021_094418__basic_rag__both_golden.jsonl` |
 
-기획서의 기본 조합은 "커스텀 코드 + Ragas + AgentEvals"였습니다. 위 구성은 커스텀 Judge 비중을 키우고 Ragas를 보조로 둔 안입니다.
+한 줄이 한 문항이고, 평가에 쓰는 필드는 다음과 같습니다.
+
+| 필드 | 내용 |
+|---|---|
+| `case_id`, `golden`, `question_set`, `question` | 문항 식별. `golden`은 `provided` / `team` |
+| `response_type`, `answer` | 최종 응답 유형과 답변 |
+| `citations` | 인용한 parent의 `parent_id`, `file_name`, `page_no`, `page_end`, `source_ids` |
+| `delivered_parents` | 답변 Agent가 받은 parent의 `parent_id`, `source_ids`, `chars` (**원문 없음**) |
+| `trace` | 노드 실행 순서와 단계별 정보 (C에서 사용) |
+| `search_rounds`, `stop_reason`, `used_queries`, `usage` | 재검색 횟수, 종료 사유, 사용한 검색어, 호출 수·토큰·시간 |
+| `checks` | 이미 계산한 코드 채점 (`behavior_strict`, `context_recall`, `citation_hit` 등) |
+
+- **문맥 원문:** 실행 기록에 없습니다. `parent_id`로 `05_chunks/parent_child_300_60.parents.jsonl`의 `content`나 DB `parent_chunks.content`(같은 `experiment_id`)에서 가져옵니다.
+- **기준 답안:** `case_id`로 `03_answers/*.jsonl`(제공)과 `team_golden_set/03_answers/*.jsonl`(팀)에서 `reference_answer`, `must_include`, `must_not_include`, `expected_behavior`를 가져옵니다.
+- **결과 저장:** `06_results/eval/<run_id>__<방법>.jsonl`(문항별)과 `.summary.json`(집계)으로 저장합니다. 집계는 `run_rag.py`처럼 `golden:provided` / `golden:team`과 세트별로 나눕니다.
+- **고정할 것:** Judge 모델 이름, 프롬프트(기준표), temperature(0)를 결과 파일에 함께 기록합니다. 기준표를 바꾸면 새 버전으로 다시 돌립니다.
+
+#### A. 커스텀 LLM Judge (주 지표)
+
+우리 골든셋 필드(`reference_answer`, `must_include`, `must_not_include`)를 그대로 쓰는 유일한 방법이라 주 지표로 씁니다. 문항당 Judge 호출 1회입니다.
+
+- **입력:** 질문, 기대 행동, 기준 답안, `must_include`, `must_not_include`, 답변 Agent가 받은 문맥(parent 원문, 문서 번호 포함), 최종 답변, 인용 문서 번호.
+- **Judge 모델:** 답변 모델(`gemini-3.6-flash`)과 다른 모델을 씁니다(예: `gemini-3.8-flash` 또는 Pro 계열). 같은 모델이 자기 답을 채점하는 편향을 줄이기 위해서입니다.
+- **출력:** JSON 구조화 출력으로 받습니다. 항목마다 점수와 이유(근거 문장)를 함께 받습니다.
+
+기준표 초안입니다. 기준을 다듬어도 항목 이름은 유지해 결과를 비교할 수 있게 합니다.
+
+| 항목 | 점수 | 기준 |
+|---|---|---|
+| `correctness` | 0 / 1 / 2 | 기준 답안의 핵심 사실과 일치하는가 (2: 일치, 1: 일부 누락·부정확, 0: 틀림) |
+| `must_include_coverage` | 0~1 | `must_include` 항목 중 의미상 충족한 비율 (항목별 충족 여부도 기록) |
+| `must_not_violation` | true / false | `must_not_include`에 해당하는 내용을 말했는가 |
+| `faithfulness` | 0 / 1 / 2 | 답변의 사실·수치가 받은 문맥에 있는가 (2: 모두 있음, 1: 일부 없음, 0: 지어낸 핵심 수치·조건 있음) |
+| `citation_support` | 0 / 1 / 2 | 인용한 문서가 해당 문장을 실제로 뒷받침하는가 |
+| `behavior_appropriate` | true / false | 보류·거절·되묻기 문항에서 이유와 확인할 곳을 적절히 안내했는가 |
+
+- 보류·거절·되묻기가 기대인 문항은 `correctness`·`must_include_coverage`를 그 대응이 맞는지 기준으로 봅니다(예: 문서에 없음을 밝히고 공식 자료를 안내했는가).
+- **사람 보정:** 30문항 정도를 직접 채점해 Judge와 비교합니다. 세트별·응답 유형별로 고르게 뽑습니다. 일치율이 낮은 항목은 기준표 문구를 고칩니다.
+- **비용:** 문항당 입력은 문맥 포함 약 4천~8천 토큰입니다. Multi-Agent 270문항이면 입력 약 150만~200만 토큰이고, 기본 RAG까지 하면 두 배입니다.
+
+#### B. Ragas (교차 확인)
+
+A의 충실성·정확성 점수가 일반적인 RAG 지표와 크게 어긋나지 않는지 확인하는 용도입니다. 전체가 아니라 **일부 문항(약 50개, 세트별로 고르게)**으로 시작합니다.
+
+- **버전:** 설치된 버전은 `ragas 0.4.3`입니다. 지표는 새 API인 `ragas.metrics.collections`를 씁니다(`Faithfulness`, `ContextRecall`, `FactualCorrectness`, `AnswerRelevancy` 등). `ragas.metrics`의 밑줄 붙은 이름(`_Faithfulness` 등)은 구버전 호환용입니다.
+- **모델 연결:** LLM은 `ragas.llms.llm_factory`, 임베딩은 `ragas.embeddings.GoogleEmbeddings`로 Gemini를 연결합니다. 정확한 사용법은 0.4 문서를 확인합니다.
+- **입력 매핑:** 질문 → `user_input`, 최종 답변 → `response`, 받은 parent 원문 목록 → `retrieved_contexts`, 기준 답안 → `reference`.
+- **추천 지표:**
+
+| 지표 | 비교 대상 |
+|---|---|
+| `Faithfulness` | A의 `faithfulness` |
+| `FactualCorrectness` 또는 `AnswerCorrectness` | A의 `correctness` |
+| `ContextRecall` | 코드 채점의 `context_recall` |
+
+- **주의:** 기본 프롬프트가 영어라 한국어 답변에서 점수가 낮게 나올 수 있습니다. 답변을 주장 단위로 나눠 여러 번 호출하므로 A보다 비용이 크고, 실행마다 점수가 조금씩 달라집니다. 보류·거절 문항은 Ragas 지표가 맞지 않으니 `answer`·`correct`가 기대인 문항만 넣습니다.
+
+#### C. 경로(Trajectory) 평가
+
+Agent가 필요한 단계를 거쳤는지, 불필요한 재검색을 했는지 봅니다. 기본 RAG는 경로가 `search → judge_and_answer`로 고정이라 Multi-Agent만 대상입니다.
+
+**C-1. 코드 지표 (LLM 호출 없음, 먼저 할 것)**
+
+`trace`, `search_rounds`, `stop_reason`, `used_queries`, `scope_files`, `checks`로 계산합니다.
+
+| 지표 | 계산 |
+|---|---|
+| 재검색률 | `search_rounds > 1` 비율 (현재 270문항 중 24개: 2회 11, 3회 13) |
+| 재검색 효과 | 재검색한 문항 중 최종 `behavior_strict`·`context_recall`이 통과한 비율 |
+| 헛된 재검색 | 재검색했는데 `trace`의 `search` 단계 `new_parents`가 0이거나 `stop_reason=max_rounds`로 끝난 문항 (현재 `max_rounds` 9개) |
+| 검색 범위 준수 | `scope_files`가 세트별 범위(`rag/config.py`의 `SCOPE_GROUPS`)와 일치하는가 |
+| 검색어 중복 | `used_queries`에 같은 검색어가 반복되는가 |
+| 보류·거절 문항의 검색 | 범위 밖·부적절 질문에서 불필요하게 재검색했는가 |
+
+**C-2. AgentEvals 경로 일치**
+
+설치된 `agentevals 0.0.9`의 LangGraph용 함수를 씁니다.
+
+| 함수 | 용도 |
+|---|---|
+| `agentevals.graph_trajectory.strict.graph_trajectory_strict_match` | 실제 노드 순서가 기대 경로와 정확히 같은가 (LLM 없음) |
+| `agentevals.graph_trajectory.llm.create_graph_trajectory_llm_as_judge` | 경로가 논리적이고 효율적인지 LLM이 판단 (`judge=`에 LangChain Gemini 모델 전달) |
+
+- **변환:** `trace`의 `step` 값을 순서대로 뽑아 graph trajectory의 단계 목록으로 바꿉니다. 예: `orchestrator → search → evaluate → feedback → improve → search → evaluate → answer`.
+- **기대 경로 정의:**
+
+| 문항 | 기대 경로 |
+|---|---|
+| 첫 검색으로 답할 수 있는 positive | `orchestrator → search → evaluate → answer` |
+| 범위 밖·부적절·되묻기 negative | `orchestrator → search → evaluate → answer` (재검색 없이 판정) |
+| 근거가 여러 조항·쪽에 걸친 문항 | 재검색 1회까지 허용 (`subset`/`superset` 성격이라 LLM Judge로 판단) |
+
+- 기대 경로는 골든셋 필드(근거 ID 수, `set`, `category`)로 정하고, 정한 규칙을 결과 파일에 함께 적습니다.
+
+#### 완료 기준
+
+- 두 실행(Multi-Agent, 기본 RAG)에 A와 C-1을 돌린 결과와 요약이 `06_results/eval/`에 있음
+- B는 약 50문항 결과와, A와의 점수 비교(상관 또는 불일치 사례)가 있음
+- C-2는 Multi-Agent 270문항의 경로 일치율과 불일치 사례가 있음
+- 사람 보정 30문항의 Judge 일치율이 있음
+- README 5장에 결과 표를 추가하고, 이 문서의 5-1을 "완료"로 바꿈
+
+이 결과가 나오면 5-2(프롬프트 수정)의 기준선이 됩니다. 프롬프트를 고친 뒤 같은 270문항으로 다시 실행하고 A·C로 다시 채점해 비교합니다.
 
 ### 5-2. Multi-Agent 보류 판단 프롬프트 수정
 
@@ -180,6 +275,22 @@ python extraction/vision_fill.py
 - `child_k`, `max_parents`, 재검색 횟수, Hybrid 가중치 등 [pipeline.md 5장](./pipeline.md#5-확정이-필요한-항목)의 확정 필요 항목.
 - 비용 기록: 추출 비용은 README에 있습니다. 임베딩 적재와 RAG 실행 비용은 아직 정리하지 않았습니다(`06_results/rag/*.summary.json`의 `avg_input_tokens`·`avg_output_tokens` 참고).
 - `dev` → `main` PR.
+
+### 5-6. 참고: 평가 방법 비교 (2026-10-21 조사)
+
+5-1에서 A·B·C를 고른 근거입니다. 이 PC에는 `ragas 0.4.3`, `agentevals 0.0.9`, `openevals 0.2.0`, `langsmith`가 설치되어 있고 `deepeval`·`trulens`는 없습니다.
+
+| 방법 | 잘하는 것 | 우리 데이터에 맞는 정도 | 비고 |
+|---|---|---|---|
+| 커스텀 LLM Judge | 기준 답안 대비 정확성, `must_include` 의미 충족, `must_not_include` 위반, 충실성 | 가장 높음 | 직접 구현, 문항당 1회 호출 → **A** |
+| Ragas | 충실성, 답변 정확성, 문맥 정밀도·재현율 | 중간 | 영어 프롬프트, 문항당 여러 번 호출 → **B (교차 확인)** |
+| AgentEvals | LangGraph 경로 일치, 경로 LLM Judge | 경로 평가에 적합 | → **C-2** |
+| DeepEval | G-Eval(커스텀 기준), 충실성, pytest 연동 | 중간~높음 | 미설치, Gemini 모델 클래스 연결 필요. A를 프레임워크로 옮기고 싶을 때 후보 |
+| OpenEvals | RAG용 Judge(groundedness, helpfulness, retrieval relevance) | 중간 | 설치됨, 영어 프롬프트 |
+| TruLens | 청크 단위 근거성, 추적 | 낮음~중간 | 미설치, 추적 중심 |
+| LangSmith | 실험 비교 UI | 보조 | 계정 필요, 데이터 외부 업로드 |
+
+기획서의 기본 조합 "커스텀 코드 + Ragas + AgentEvals"와 같은 구성이며, 커스텀 Judge를 주 지표로 두고 Ragas를 교차 확인용으로 둔 점만 다릅니다.
 
 ## 6. 주의할 점
 

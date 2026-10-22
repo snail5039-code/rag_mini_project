@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import sys
+import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -25,6 +26,7 @@ from rag.basic_rag import BasicRAG
 from rag.multi_agent import MultiAgentRAG
 from rag.retrieval import BM25Retriever
 from rag.embedding import CachedQueryEmbedder
+from rag.llm import FatalLLMError
 
 FILES = {"base": "positive_cases.jsonl", "negative": "negative_cases.jsonl",
          "life": "positive_life_guide_cases.jsonl", "add": "additional_cases.jsonl"}
@@ -177,11 +179,18 @@ def main() -> None:
             return MultiAgentRAG(db.connect(), embedder, bm25)
         return BasicRAG(db.connect(), embedder)
 
+    fatal = threading.Event()   # 인증·결제 오류가 나면 남은 문항을 호출 없이 건너뛴다
+
     def work(case):
+        if fatal.is_set():
+            return {"case": case, "error": "FatalLLMError: 앞선 문항의 인증·결제 오류로 중단됨"}
         local = make()
         try:
             rec = local.run(case["question"], case["question_set"])
             return {"case": case, "record": rec, "checks": check(case, rec)}
+        except FatalLLMError as e:
+            fatal.set()
+            return {"case": case, "error": f"FatalLLMError: {e}"}
         except Exception as e:  # 한 문항 실패가 전체 실행을 멈추지 않게 기록한다
             return {"case": case, "error": f"{type(e).__name__}: {e}"}
         finally:  # 병렬 실행에서 연결이 쌓여 PostgreSQL max_connections를 넘지 않게 문항마다 닫는다

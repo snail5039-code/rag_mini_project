@@ -35,6 +35,7 @@ def latest(tag: str) -> str:
     return sorted(os.path.basename(p)[:-6] for p in paths)[-1]
 
 
+JUDGE = os.getenv("JUDGE", "judge")  # judge(=judge_v1) / judge_v2
 EXCLUDE = set(filter(None, os.getenv("EXCLUDE_CASES", "").split(",")))  # few-shot 예시 문항 등 제외
 
 
@@ -43,11 +44,11 @@ def main() -> None:
           f"{'base':>7}{'life':>7}{'add':>7}{'유형':>7}{'무오류':>7}{'호출':>6}{'토큰':>7}{'초':>6}")
     for tag in sys.argv[1:]:
         r = latest(tag)
-        s = json.load(open(f"{D}/eval/{r}__judge.summary.json"))["summary"]
+        s = json.load(open(f"{D}/eval/{r}__{JUDGE}.summary.json"))["summary"]
         a = s["all"]
         q = {k.split(":")[-1]: v["correctness"] for k, v in s.items() if "qset" in k}
         rows = [json.loads(l) for l in open(f"{D}/rag/{r}.jsonl")]
-        judged = [json.loads(l) for l in open(f"{D}/eval/{r}__judge.jsonl")]
+        judged = [json.loads(l) for l in open(f"{D}/eval/{r}__{JUDGE}.jsonl")]
         if EXCLUDE:  # 제외 문항이 있으면 Judge 요약 대신 문항별 결과로 다시 집계한다
             rows = [x for x in rows if x["case_id"] not in EXCLUDE]
             judged = [j for j in judged if j["case_id"] not in EXCLUDE]

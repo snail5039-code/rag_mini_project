@@ -120,6 +120,7 @@ python scripts/eval_judge.py --run <run_id>
 - 채점 모델 `gemini-3.8-flash`, 항목: 정확성, 필수 항목 충족, 금지 내용 위반, 근거 충실성, 인용 적합성, 대응 적절성.
 - 골든셋 실행을 채점할 때는 `--answers-dir team_golden_set/03_answers`를 함께 줍니다.
 - 결과: `06_results/eval/<run_id>__judge.jsonl`, `__judge.summary.json`
+- `--rubric judge_v2`: 완화 기준(질문이 직접 묻는 핵심만 정확성에 반영). 결과는 `__judge_v2.jsonl`로 따로 저장되고, 비교표는 `JUDGE=judge_v2 python scripts/compare_runs.py ...`
 - `--guards`로 실행한 기록은 Judge 문맥에도 같은 문서 기준일을 넣어 채점합니다.
 - 만점이 아닌 문항의 점검표: `python scripts/make_judge_audit.py --run <run_id> --answers-dir <기준 답안 폴더> --out docs/judge_audit.md`
 

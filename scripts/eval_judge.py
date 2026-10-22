@@ -59,6 +59,19 @@ SYSTEM = """당신은 금융 RAG 시스템의 답변을 채점하는 엄격한 �
 - 인용 번호([문서 N])와 문맥 번호가 일치하는지 보고 citation_support를 채점하세요."""
 
 
+# 완화 기준 (judge_v2): 질문이 직접 묻는 핵심만 정확성에 반영한다. judge_v1과 나란히 보고하며 대체하지 않는다.
+SYSTEM_V2_RULES = """
+
+[judge_v2 완화 기준 — correctness는 아래 기준으로만 매깁니다]
+- 2점: 질문이 직접 묻는 핵심 요소에 모두 정확히 답했고, 기대 행동(답변·정정·보류·되묻기·거절)이 맞음.
+  부가 설명, 확인 권고·주의 안내, 질문이 직접 묻지 않은 부수 수치·배경이 빠진 것은 감점하지 않습니다.
+  must_include 항목 중 이런 부가 항목이 빠진 것은 must_include 충족 여부에는 그대로 표시하되 correctness는 깎지 않습니다.
+- 1점: 질문이 직접 묻는 요소 중 일부가 빠졌거나 부정확함.
+- 0점: 핵심 내용이 틀렸거나, 기대 행동이 틀렸거나(보류·되묻기해야 할 때 단정하는 등), must_not_include를 사실로 주장함."""
+
+RUBRICS = {"judge_v1": "", "judge_v2": SYSTEM_V2_RULES}
+
+
 def parent_store() -> dict[str, dict]:
     method = config.BASELINE_EXPERIMENT.split("__")[0]
     path = config.CHUNK_DIR / f"{method}.parents.jsonl"
@@ -86,9 +99,9 @@ def build_user(case: dict, rec: dict, parents: dict) -> str:
     )
 
 
-def judge_one(case: dict, rec: dict, parents: dict) -> dict:
+def judge_one(case: dict, rec: dict, parents: dict, rubric: str = "judge_v1") -> dict:
     t0 = time.time()
-    verdict, usage = llm.generate_structured(SYSTEM, build_user(case, rec, parents), Verdict,
+    verdict, usage = llm.generate_structured(SYSTEM + RUBRICS[rubric], build_user(case, rec, parents), Verdict,
                                              model=JUDGE_MODEL, temperature=0.0)
     items = verdict.must_include
     return {
@@ -138,6 +151,8 @@ def main() -> None:
     ap.add_argument("--cases", nargs="+")
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--rubric", choices=list(RUBRICS), default="judge_v1",
+                    help="judge_v1(기준) / judge_v2(완화: 질문이 직접 묻는 핵심만 정확성에 반영)")
     ap.add_argument("--answers-dir", default=str(config.ANSWERS_DIR), help="기준 답안 폴더 (골든셋이면 team_golden_set/03_answers)")
     args = ap.parse_args()
 
@@ -153,7 +168,7 @@ def main() -> None:
 
     def work(rec):
         try:
-            return judge_one(cases[rec["case_id"]], rec, parents)
+            return judge_one(cases[rec["case_id"]], rec, parents, args.rubric)
         except Exception as e:  # noqa: BLE001
             errors.append((rec["case_id"], repr(e)[:200]))
             return None
@@ -176,15 +191,16 @@ def main() -> None:
             print(json.dumps(r, ensure_ascii=False)[:600])
         return
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / f"{args.run}__judge.jsonl").write_text(
+    suffix = "__judge" if args.rubric == "judge_v1" else f"__{args.rubric}"
+    (OUT_DIR / f"{args.run}{suffix}.jsonl").write_text(
         "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
     tot_in = sum(r["usage"]["input_tokens"] for r in rows)
     tot_out = sum(r["usage"]["output_tokens"] for r in rows)
-    (OUT_DIR / f"{args.run}__judge.summary.json").write_text(json.dumps({
-        "run_id": args.run, "judge_model": JUDGE_MODEL, "rubric": RUBRIC_VERSION, "temperature": 0.0,
+    (OUT_DIR / f"{args.run}{suffix}.summary.json").write_text(json.dumps({
+        "run_id": args.run, "judge_model": JUDGE_MODEL, "rubric": args.rubric, "temperature": 0.0,
         "n": len(rows), "errors": errors, "total_input_tokens": tot_in, "total_output_tokens": tot_out,
         "summary": summary}, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"저장: {OUT_DIR / (args.run + '__judge.jsonl')}  입력 {tot_in:,} / 출력 {tot_out:,} 토큰")
+    print(f"저장: {OUT_DIR / (args.run + suffix + '.jsonl')}  입력 {tot_in:,} / 출력 {tot_out:,} 토큰")
 
 
 if __name__ == "__main__":

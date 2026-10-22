@@ -52,9 +52,17 @@ class Improvement(BaseModel):
     retriever: Literal["vector", "hybrid"] = Field(description="정확한 용어·조항명을 찾으면 hybrid, 아니면 vector")
 
 
+class QuestionPart(BaseModel):
+    part: str = Field(description="질문이 묻는 하위 요소 하나 (전제가 틀렸다면 그 전제도 하나의 요소)")
+    evidence: str = Field(description="이 요소에 답하는 문서 내용 요약: 조건·기한·예외·미이행 시 결과 포함. 없으면 '문서에 없음'")
+    docs: list[int] = Field(description="근거 문서 번호")
+
+
 class FinalAnswer(BaseModel):
+    """답변 전에 질문을 하위 요소로 나누고 요소별 근거를 먼저 적게 해 요소 누락을 줄인다(정원하 v4)."""
+    question_parts: list[QuestionPart] = Field(description="답변 전에 작성하는 질문 요소 점검표")
     response_type: ResponseType
-    answer: str
+    answer: str = Field(description="question_parts의 모든 요소에 순서대로 답하는 한국어 답변")
     citations: list[int] = Field(description="답변에 사용한 문서 번호(1부터)")
     core_answered: bool = Field(description="질문의 중심 물음(묻는 값·결론)에 문서 근거로 답했는가. 하위 질문 일부만 "
                                             "확인할 수 없으면 true. 묻는 값 자체가 문서에 없어 관련 내용만 소개했다면 false")
@@ -102,7 +110,18 @@ ANSWER_PROMPT = f"""당신은 답변 Agent입니다. 제공된 <documents>만 �
 근거 일부만 확인된 경우 확인된 부분은 인용과 함께 답하고(response_type은 answer 또는 correct), 확인하지 못한 부분만 문서에서 확인할 수 없다고 분명히 적습니다.
 core_answered에는 질문의 중심 물음(묻는 값·결론)에 문서 근거로 답했는지를 정직하게 적습니다. 여러 하위 질문 중 일부만 확인할 수 없으면 true이고, 묻는 값 자체가 문서에 없어 관련 내용만 소개했다면 false입니다.
 문서 표현 그대로의 조건·기간·수치를 정확히 옮기고, answer·correct에서는 사용한 문서 번호를 citations에 넣습니다.
-{COMMON_RULES}"""
+{COMMON_RULES}
+답변 순서:
+1. question_parts에 질문이 묻는 요소를 빠짐없이 나눕니다. 질문 속 잘못된 전제·오해도 하나의 요소로 둡니다.
+2. 요소마다 문서에서 관련 조건·기한·금액·예외와 '이행하지 않으면 어떻게 되는지'까지 찾아 evidence에 적습니다.
+3. answer는 모든 요소에 순서대로 답합니다. 오해를 바로잡을 때는 올바른 내용과 함께 사용자가 실제로 확인할 것(본인 계약·보증 종류, 담당 기관 등)도 안내합니다.
+4. 문서에 없는 요소는 그 요소만 문서에서 확인할 수 없다고 적습니다.
+보류·되묻기·거절할 때는 다음 세 가지를 반드시 적습니다.
+(1) 답하려면 무엇이 더 필요한지 구체적으로: 상품·약관 이름, 계약서류를 받은 날, 계좌·보증 종류 등
+(2) 왜 이 문서들로 확인할 수 없는지: 회사별 별첨에서 정하는 값, 문서 기준일 이후의 제도·수치, 개인 계약·계좌 정보, 문서에 없는 상품 등
+(3) 어디서 확인할 수 있는지: 해당 금융회사의 약관과 별첨, 공식 공시, 담당 기관
+문서에 관련 조항이 있으면 그 조항이 무엇을 정하고 무엇을 정하지 않는지도 함께 알려 줍니다.
+개인 맞춤 추천을 거절할 때는 일반적인 상품 특성·위험과 스스로 판단할 때 볼 요소를 안내합니다."""
 
 
 # ------------------------------------------------------------------ 상태
@@ -314,7 +333,7 @@ class MultiAgentRAG:
                                                 "degraded": True}]}
         final = out.model_dump()
         step = {"step": "answer", "stop_reason": reason, "response_type": out.response_type,
-                "core_answered": out.core_answered}
+                "core_answered": out.core_answered, "question_parts": final["question_parts"]}
         forced = self.decide_type(state["evaluation"], final)
         if forced != final["response_type"]:
             step["type_override"] = f"{final['response_type']}->{forced}"

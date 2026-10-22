@@ -47,7 +47,7 @@ class FakeLLM:
         if name == "Improvement":
             return schema(queries=self.improve_queries, retriever="vector"), usage
         if name == "FinalAnswer":
-            return schema(response_type=self.final_type, answer="답", citations=[1],
+            return schema(question_parts=[], response_type=self.final_type, answer="답", citations=[1],
                           core_answered=self.core, reason="r"), usage
         raise AssertionError(name)
 

@@ -64,7 +64,7 @@ class FakeLLM:
         if name == "Improvement":
             return schema(queries=["청약 철회 기간 약관"], retriever="vector"), usage
         if name == "FinalAnswer":
-            return schema(response_type="answer", answer="14일 이내입니다.", citations=[1],
+            return schema(question_parts=[], response_type="answer", answer="14일 이내입니다.", citations=[1],
                           core_answered=True, reason="r"), usage
         raise AssertionError(name)
 
@@ -174,6 +174,7 @@ def main():
             for t in new_c["trace"]:
                 t.pop("core_answered", None)   # D가 더한 키(기록용)
                 t.pop("sub_queries", None)     # 개선 2(질문 분해)가 더한 키
+                t.pop("question_parts", None)  # 개선 3(질문 요소 점검표)이 더한 키
             for r in (new_c, old_c):           # 개선 2의 분해 호출 1회만큼 사용량이 다르다
                 r.pop("usage")
             calls_new = [c for c in llm_new.calls if c != "Decomposition"]

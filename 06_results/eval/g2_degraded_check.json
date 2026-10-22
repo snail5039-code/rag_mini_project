@@ -1,0 +1,54 @@
+{
+ "run": "20261022_092406__multi_agent__both_golden",
+ "n": 25,
+ "degraded_records": 25,
+ "rows": {
+  "저하 모드(평가 강제 실패)": {
+   "strict": 0.68,
+   "lenient": 0.8,
+   "judge": 0.72,
+   "full": 0.48,
+   "tokens": 3449,
+   "faith": 0.98
+  },
+  "기본 RAG": {
+   "strict": 0.76,
+   "lenient": 0.84,
+   "judge": 0.68,
+   "full": 0.44,
+   "tokens": 3332,
+   "faith": 0.98
+  },
+  "정상 Multi-Agent(3회 평균)": {
+   "strict": 0.853,
+   "lenient": 0.893,
+   "judge": 0.78,
+   "full": 0.573,
+   "tokens": 8780,
+   "faith": 0.967
+  }
+ },
+ "response_types": {
+  "저하": {
+   "answer": 18,
+   "correct": 4,
+   "clarify": 0,
+   "abstain": 3,
+   "refuse": 0
+  },
+  "기본": {
+   "answer": 16,
+   "correct": 3,
+   "clarify": 0,
+   "abstain": 5,
+   "refuse": 1
+  },
+  "정상MA(120715)": {
+   "answer": 18,
+   "correct": 2,
+   "clarify": 1,
+   "abstain": 3,
+   "refuse": 1
+  }
+ }
+}

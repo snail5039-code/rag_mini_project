@@ -1,0 +1,347 @@
+{
+ "seed": 42,
+ "n": 150,
+ "case_ids": [
+  "ADD-HF02",
+  "ADD-HF03",
+  "ADD-HF06",
+  "ADD-HF07",
+  "ADD-HF08",
+  "ADD-HF09",
+  "ADD-HF10",
+  "ADD-HF11",
+  "ADD-HF13",
+  "ADD-HF14",
+  "ADD-HF15",
+  "ADD-HP04",
+  "ADD-HP05",
+  "ADD-HP06",
+  "ADD-HP07",
+  "ADD-HP09",
+  "ADD-HP10",
+  "ADD-HP12",
+  "ADD-HP15",
+  "ADD-IN09",
+  "ADD-IN10",
+  "ADD-IN11",
+  "ADD-IN13",
+  "ADD-IN15",
+  "ADD-PF05",
+  "ADD-PF07",
+  "ADD-PF09",
+  "ADD-PF10",
+  "ADD-PF11",
+  "ADD-PF12",
+  "ADD-PF13",
+  "ADD-PF15",
+  "ADD-RP02",
+  "ADD-RP03",
+  "ADD-RP06",
+  "ADD-RP07",
+  "ADD-RP09",
+  "ADD-RP10",
+  "ADD-RP13",
+  "ADD-RP14",
+  "ADD-RP15",
+  "ADD-SE02",
+  "ADD-SE04",
+  "ADD-SE07",
+  "ADD-SE08",
+  "ADD-SE12",
+  "ADD-SE15",
+  "NEG001",
+  "NEG002",
+  "NEG003",
+  "NEG004",
+  "NEG005",
+  "NEG006",
+  "NEG007",
+  "NEG008",
+  "NEG009",
+  "NEG011",
+  "NEG012",
+  "NEG013",
+  "NEG014",
+  "NEG015",
+  "NEG019",
+  "NEG020",
+  "NEG022",
+  "NEG023",
+  "NEG024",
+  "NEG029",
+  "NEG030",
+  "NEG034",
+  "NEG035",
+  "NEG036",
+  "NEG037",
+  "NEG038",
+  "NEG039",
+  "NEG041",
+  "NEG042",
+  "NEG044",
+  "NEG045",
+  "NEG046",
+  "NEG047",
+  "NEG050",
+  "NEG052",
+  "NEG053",
+  "NEG055",
+  "NEG058",
+  "NEG059",
+  "NEG060",
+  "POS003",
+  "POS004",
+  "POS006",
+  "POS007",
+  "POS008",
+  "POS012",
+  "POS014",
+  "POS015",
+  "POS016",
+  "POS019",
+  "POS020",
+  "POS024",
+  "POS025",
+  "POS026",
+  "POS031",
+  "POS038",
+  "POS039",
+  "POS041",
+  "POS042",
+  "POS044",
+  "POS047",
+  "POS050",
+  "POS051",
+  "POS053",
+  "POS055",
+  "POS056",
+  "POS057",
+  "POS058",
+  "POS060",
+  "POS065",
+  "POS066",
+  "POS067",
+  "POS068",
+  "POS069",
+  "POS071",
+  "POS077",
+  "POS078",
+  "POS079",
+  "POS080",
+  "POS082",
+  "POS083",
+  "POS086",
+  "POS087",
+  "POS088",
+  "POS090",
+  "POS092",
+  "POS093",
+  "POS097",
+  "POS098",
+  "POS099",
+  "POS100",
+  "POS101",
+  "POS102",
+  "POS103",
+  "POS104",
+  "POS105",
+  "POS107",
+  "POS108",
+  "POS110",
+  "POS116",
+  "POS117",
+  "POS119",
+  "POS120"
+ ],
+ "forced": {
+  "ADD-HP15": [
+   "oos",
+   "hold_target",
+   "unstable",
+   "abstain_expected"
+  ],
+  "ADD-RP06": [
+   "oos",
+   "overhold_or_regress",
+   "unstable"
+  ],
+  "ADD-RP15": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG001": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG002": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG004": [
+   "oos"
+  ],
+  "NEG005": [
+   "oos",
+   "overhold_or_regress",
+   "abstain_expected"
+  ],
+  "NEG006": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG007": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG008": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG009": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG034": [
+   "oos"
+  ],
+  "NEG035": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG036": [
+   "oos"
+  ],
+  "NEG037": [
+   "oos",
+   "overhold_or_regress"
+  ],
+  "NEG039": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG041": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG042": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG044": [
+   "oos",
+   "abstain_expected"
+  ],
+  "NEG047": [
+   "oos",
+   "overhold_or_regress",
+   "unstable"
+  ],
+  "NEG059": [
+   "oos",
+   "abstain_expected"
+  ],
+  "POS055": [
+   "oos"
+  ],
+  "POS086": [
+   "oos",
+   "abstain_expected"
+  ],
+  "POS088": [
+   "oos",
+   "overhold_or_regress"
+  ],
+  "POS097": [
+   "oos",
+   "abstain_expected"
+  ],
+  "POS099": [
+   "oos",
+   "abstain_expected"
+  ],
+  "POS107": [
+   "oos",
+   "abstain_expected"
+  ],
+  "POS110": [
+   "oos",
+   "unstable",
+   "abstain_expected"
+  ],
+  "POS117": [
+   "oos",
+   "hold_target",
+   "unstable",
+   "abstain_expected"
+  ],
+  "ADD-HF15": [
+   "hold_target",
+   "abstain_expected"
+  ],
+  "ADD-IN15": [
+   "hold_target",
+   "abstain_expected"
+  ],
+  "ADD-SE15": [
+   "hold_target",
+   "unstable",
+   "abstain_expected"
+  ],
+  "POS090": [
+   "hold_target",
+   "abstain_expected"
+  ],
+  "ADD-PF15": [
+   "hold_target",
+   "abstain_expected"
+  ],
+  "POS120": [
+   "hold_target",
+   "abstain_expected"
+  ],
+  "ADD-HP09": [
+   "overhold_or_regress"
+  ],
+  "POS079": [
+   "overhold_or_regress"
+  ],
+  "ADD-HF09": [
+   "overhold_or_regress"
+  ],
+  "POS003": [
+   "overhold_or_regress"
+  ],
+  "POS053": [
+   "overhold_or_regress"
+  ],
+  "POS116": [
+   "overhold_or_regress"
+  ],
+  "NEG014": [
+   "overhold_or_regress"
+  ],
+  "ADD-RP13": [
+   "overhold_or_regress"
+  ],
+  "NEG052": [
+   "overhold_or_regress",
+   "unstable"
+  ],
+  "ADD-RP10": [
+   "unstable"
+  ],
+  "POS056": [
+   "unstable"
+  ],
+  "NEG013": [
+   "clarify_miss"
+  ],
+  "NEG046": [
+   "clarify_miss"
+  ],
+  "NEG003": [
+   "abstain_expected"
+  ]
+ },
+ "rule": "must-include(out_of_scope 판정 경험·보류 대상·과보류·불안정·되묻기 누락·abstain 기대) + 나머지 (golden,set) 층화 무작위 seed 42"
+}

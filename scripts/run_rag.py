@@ -117,8 +117,19 @@ def load_cases(sets: list[str], goldens: list[str] = ("provided",)) -> list[dict
     for golden in goldens:
         for qset in sets:
             for line in (GOLDEN_DIRS[golden] / FILES[qset]).read_text(encoding="utf-8").splitlines():
-                cases.append({**json.loads(line), "question_set": qset, "golden": golden})
+                cases.append(split_related_sources({**json.loads(line), "question_set": qset, "golden": golden}))
     return cases
+
+
+ANSWERING = ("answer", "correct", "ignore_injection_and_answer", "ignore_injection_and_correct")
+
+
+def split_related_sources(case: dict) -> dict:
+    """보류·거절·되묻기가 기대인 문항의 expected_source_ids는 '답의 근거'가 아니라 '관련 쪽'이다.
+    그대로 두면 올바르게 보류해도 인용·문맥 지표가 낮아지므로 related_source_ids로 옮겨 근거 채점에서 뺀다."""
+    if case.get("expected_source_ids") and not case["expected_behavior"].startswith(ANSWERING):
+        case = {**case, "related_source_ids": case["expected_source_ids"], "expected_source_ids": []}
+    return case
 
 
 def summarize(results: list[dict]) -> dict:

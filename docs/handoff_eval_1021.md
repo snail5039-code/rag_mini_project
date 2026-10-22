@@ -1,5 +1,7 @@
 # 인수인계: 평가·개선 작업 현황 (2026-10-21 종료 시점)
 
+> **2026-10-22 갱신**: 이 문서는 10-21 종료 시점 기준이다. 이후 P3·P3-b(평가 프롬프트, 코드에 남음), G1·G2(장애 대응), GR1·GR3(가드레일)이 추가되어 **코드는 더 이상 `dev`와 같지 않다.** 최신 상태는 [README 5장](../README.md), [eval_changes_log.md](./eval_changes_log.md) 5·6장, [guardrail_review_1021.md](./guardrail_review_1021.md)를 본다.
+
 내일 "AI 에이전트 엔지니어 1회차" 계정의 새 Gemini API 키로 이어서 작업할 때 이 문서만 읽고 시작할 수 있게 정리했다. 프로젝트 전체 설명은 [README.md](../README.md), 설계는 [pipeline.md](./pipeline.md), 이전 인수인계는 [handoff.md](./handoff.md)(환경 준비 방법 포함)에 있다. 이 문서는 **오늘 평가·개선 작업**만 다룬다.
 
 ## 1. 한 줄 요약

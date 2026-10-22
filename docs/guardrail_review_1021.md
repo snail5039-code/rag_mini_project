@@ -55,8 +55,8 @@ G1 → G2 순서로 진행하고, G3·G4는 측정 데이터(인용 0건 answer 
 
 | 항목 | 커밋 | 변경 | 검증 |
 |---|---|---|---|
-| G1 | `3b8bedc` | `rag/llm.py`: 401·402·403은 `FatalLLMError`로 즉시 중단, 구조화 출력 파싱 실패는 1회 재호출(사용량은 시도별 합산). `scripts/run_rag.py`: `FatalLLMError` 뒤 남은 문항은 호출 없이 건너뜀 | `scripts/test_g1_fault_tolerance.py` 8/8 (가짜 클라이언트, API 비용 0) |
-| G2 | 이 문서와 함께 커밋 | `rag/multi_agent.py`: 임베딩 실패→BM25, 평가 실패→현재 문맥으로 바로 답변, feedback·improve 실패→재검색 접고 답변, 답변 실패→안전 응답. `degraded`·`degraded_reasons` 기록. `run_rag.check`는 `degraded` 응답을 점수에서 실패로 집계 | `scripts/test_g2_fallback.py` 15/15 (오류 주입, `FatalLLMError` 전파, 수정 전 코드와 정상 경로 동일) |
+| G1 | `3b8bedc` | `rag/llm.py`: 401·402·403은 `FatalLLMError`로 즉시 중단, 구조화 출력 파싱 실패는 1회 재호출(사용량은 시도별 합산). `scripts/run_rag.py`: `FatalLLMError` 뒤 남은 문항은 호출 없이 건너뜀 | `tests/test_g1_fault_tolerance.py` 8/8 (가짜 클라이언트, API 비용 0) |
+| G2 | 이 문서와 함께 커밋 | `rag/multi_agent.py`: 임베딩 실패→BM25, 평가 실패→현재 문맥으로 바로 답변, feedback·improve 실패→재검색 접고 답변, 답변 실패→안전 응답. `degraded`·`degraded_reasons` 기록. `run_rag.check`는 `degraded` 응답을 점수에서 실패로 집계 | `tests/test_g2_fallback.py` 15/15 (오류 주입, `FatalLLMError` 전파, 수정 전 코드와 정상 경로 동일) |
 
 - 실제 호출에서 402(크레딧 소진)가 나왔을 때 G1의 즉시 중단이 작동했다.
 - **실제 모델 확인(저하 모드 25문항)**: 아래 7장. **미확인**: 270문항에서 정상 경로 점수 불변.
@@ -65,7 +65,7 @@ G1 → G2 순서로 진행하고, G3·G4는 측정 데이터(인용 0건 answer 
 
 ## 7. G2 저하 모드 실제 확인 (2026-10-22, 25문항)
 
-평가 단계(`evaluate`)를 강제로 실패시켜 "현재 문맥으로 바로 답변"하는 경로를 실제 모델로 돌렸다. 문항은 `subset150.json`에서 시드 7로 25개를 뽑았다(`scripts/run_degraded_check.py`). 실행 `20261022_092406__multi_agent__both_golden`, 비교 `scripts/compare_degraded.py` → `06_results/eval/g2_degraded_check.json`. 25문항 모두 `degraded` 응답이었고 오류는 없었다. 행동 점수는 `degraded` 플래그를 무시하고 응답 유형으로 다시 계산했다.
+평가 단계(`evaluate`)를 강제로 실패시켜 "현재 문맥으로 바로 답변"하는 경로를 실제 모델로 돌렸다. 문항은 `subset150.json`에서 시드 7로 25개를 뽑았다(`scripts/analysis/run_degraded_check.py`). 실행 `20261022_092406__multi_agent__both_golden`, 비교 `scripts/analysis/compare_degraded.py` → `06_results/eval/g2_degraded_check.json`. 25문항 모두 `degraded` 응답이었고 오류는 없었다. 행동 점수는 `degraded` 플래그를 무시하고 응답 유형으로 다시 계산했다.
 
 | 지표 (같은 25문항) | 저하 모드 | 기본 RAG | 정상 Multi-Agent(3회 평균) |
 |---|---|---|---|
@@ -83,7 +83,7 @@ G1 → G2 순서로 진행하고, G3·G4는 측정 데이터(인용 0건 answer 
 
 | 항목 | 내용 | 결과 |
 |---|---|---|
-| GR1 입력 검증 | `rag/guardrail.py`: 빈 질문·2,000자 초과는 LLM·검색 없이 `clarify` 안내. 인젝션이 섞인 정상 질문은 막지 않음 | `scripts/test_gr_guardrail.py` 24/24 (API 비용 없음) |
+| GR1 입력 검증 | `rag/guardrail.py`: 빈 질문·2,000자 초과는 LLM·검색 없이 `clarify` 안내. 인젝션이 섞인 정상 질문은 막지 않음 | `tests/test_gr_guardrail.py` 24/24 (API 비용 없음) |
 | GR2 적대적 문항 측정 | `adversarial_set/` 36문항(인젝션 변형 14, 내부 정보 6, 개인정보 4, 권유·기만 우회 6, 정상 대조 6). 상세는 [adversarial_set_1022.md](./adversarial_set_1022.md) | 아래 표 |
 | GR3 출력 검사(기록만) | 응답은 막지 않고 `guardrail_flags`에 기록: 인용 없는 answer/correct, 주민·카드번호 패턴, 투자 권유·수익 보장 표현 | 기준선 270문항에 소급 적용: 신호 0건(오탐 2건은 패턴을 좁혀 제거) |
 | GR4 차단 규칙 | 측정에서 취약점이 보이면 그 부분만 차단 | **현재 필요 없음** |

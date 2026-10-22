@@ -4,7 +4,7 @@
 
 - 근거 데이터: 기준선 Multi-Agent 실행 `06_results/rag/20261021_120715__multi_agent__both_golden.jsonl`(270문항), 반복 실행 `165034`, `165515`
 - 수정 커밋: `bc93833`(A), `15608bc`(B·C·D), `20d82a6`(D 보정)
-- 테스트: `scripts/test_agent_fixes.py`(가짜 LLM, 15개), 기존 G1·G2·GR 테스트 모두 통과
+- 테스트: `tests/test_agent_fixes.py`(가짜 LLM, 15개), 기존 G1·G2·GR 테스트 모두 통과
 
 ## 1. 한눈에 보기
 
@@ -99,7 +99,7 @@ P3-b 실행(`20261022_100843`, 150문항)과 겹치는 29문항에서 비교하�
 
 ## 5. 270문항 전체 결과 (3회 반복 + Judge)
 
-같은 270문항(제공 180 + 팀 90)을 수정 후 코드로 Multi-Agent 3회, 기본 RAG 1회 실행하고 모두 Judge(`gemini-3.8-flash`)로 채점했다. 4개 실행은 병렬로 돌렸고 오류는 0건이다. 집계는 `scripts/compare_fixes.py`, 결과는 `06_results/eval/agent_fixes_1022__multi.json`, `__basic.json`에 있다.
+같은 270문항(제공 180 + 팀 90)을 수정 후 코드로 Multi-Agent 3회, 기본 RAG 1회 실행하고 모두 Judge(`gemini-3.8-flash`)로 채점했다. 4개 실행은 병렬로 돌렸고 오류는 0건이다. 집계는 `scripts/analysis/compare_fixes.py`, 결과는 `06_results/eval/agent_fixes_1022__multi.json`, `__basic.json`에 있다.
 
 - 수정 전: `20261021_120715`, `165034`, `165515` (P3 적용 전 기준선 3회)
 - 수정 후: `20261022_104832`, `104824`, `104830` (P3·P3-b + A~D)
@@ -144,7 +144,7 @@ P3-b 실행(`20261022_100843`, 150문항)과 겹치는 29문항에서 비교하�
 
 ## 6. 남은 실패와 다음 개선 방향
 
-수정 후 3회 실행의 실패 원인(`scripts/analyze_failures.py`, `06_results/eval/failure_analysis_fixes.json`). 실패는 실행당 약 133/270이고 Judge 만점이 아닌 문항까지 포함한 보수적 기준이다.
+수정 후 3회 실행의 실패 원인(`scripts/analysis/analyze_failures.py`, `06_results/eval/failure_analysis_fixes.json`). 실패는 실행당 약 133/270이고 Judge 만점이 아닌 문항까지 포함한 보수적 기준이다.
 
 | 원인 | 실행당 건수 | 특징 |
 |---|---:|---|

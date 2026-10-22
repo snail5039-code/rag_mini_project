@@ -81,8 +81,8 @@ python scripts/eval_retrieval.py
 ```
 
 - 적재된 모든 experiment × 검색기(vector, bm25, hybrid, mmr)를 제공 positive 140문항으로 평가합니다.
-- child 단계와 parent 단계의 Hit@k, Recall@k, Precision@k, nDCG@k, MRR을 PostgreSQL(`retrieval_eval_runs`, `retrieval_eval_cases`)과 `06_results/*.json`에 저장합니다.
-- 질문 유형(용어형/상황형)별 비교: `python scripts/analyze_question_types.py`
+- child 단계와 parent 단계의 Hit@k, Recall@k, Precision@k, nDCG@k, MRR을 PostgreSQL(`retrieval_eval_runs`, `retrieval_eval_cases`)과 `06_results/retrieval/*.json`에 저장합니다.
+- 질문 유형(용어형/상황형)별 비교: `python scripts/analysis/analyze_question_types.py`
 
 ## 4. RAG 실행
 
@@ -119,14 +119,14 @@ python scripts/eval_judge.py --run <run_id> --workers 12
 - 채점 모델 `gemini-3.8-flash`, 항목: 정확성, 필수 항목 충족, 금지 내용 위반, 근거 충실성, 인용 적합성, 대응 적절성.
 - 결과: `06_results/eval/<run_id>__judge.jsonl`, `__judge.summary.json`
 - `--rubric judge_v2`: 완화 기준(질문이 직접 묻는 핵심만 정확성에 반영). 결과는 `__judge_v2.jsonl`로 따로 저장됩니다. judge_v1과 나란히 보고합니다.
-- 만점이 아닌 문항 점검표: `python scripts/make_judge_audit.py --run <run_id> --out docs/judge_audit.md`
+- 만점이 아닌 문항 점검표: `python scripts/analysis/make_judge_audit.py --run <run_id> --out docs/judge_audit.md`
 
 여러 실행의 평균과 비교, 실패 원인 분석, 그림:
 
 ```bash
-python scripts/compare_fixes.py --before <run_id> ... --after <run_id> ...
-python scripts/analyze_failures.py --runs 라벨=<run_id> ...
-python scripts/make_final_figures.py
+python scripts/analysis/compare_fixes.py --before <run_id> ... --after <run_id> ...
+python scripts/analysis/analyze_failures.py --runs 라벨=<run_id> ...
+python scripts/figures/make_final_figures.py
 ```
 
 ## 골든셋

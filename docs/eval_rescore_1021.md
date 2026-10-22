@@ -1,6 +1,6 @@
 # 채점 보정 (한계점 C): LLM 없이 가능한 재집계 (2026-10-21)
 
-기준선 실행(기본 RAG `20261021_115125`, Multi-Agent `20261021_120715`, 각 270문항)의 저장된 결과만으로 다시 집계했다. 코드: `scripts/rescore_nonllm.py`, 원자료: `06_results/eval/rescore_nonllm.json`.
+기준선 실행(기본 RAG `20261021_115125`, Multi-Agent `20261021_120715`, 각 270문항)의 저장된 결과만으로 다시 집계했다. 코드: `scripts/analysis/rescore_nonllm.py`, 원자료: `06_results/eval/rescore_nonllm.json`.
 
 ## C-2. 답할 수 없는 질문을 인용·문맥 지표에서 제외
 
@@ -31,7 +31,7 @@
 
 ## C-1. `must_include` 핵심/부가 분리와 재채점
 
-`scripts/classify_must_include.py`(LLM `gemini-3.8-flash`)가 270문항의 `must_include` 항목 795개를 **핵심(core) 642개(81%)와 부가(extra) 153개(19%)**로 나눴다(`06_results/eval/must_include_core.json`, 항목마다 이유 포함). 기준은 "질문이 직접 묻는 결론·수치·조건·행동이면 핵심, 단서·한계·참고처럼 빠져도 핵심 답이 성립하면 부가"다. 이어서 저장된 Judge 결과의 항목별 충족 여부로 `scripts/rescore_core.py`가 다시 집계했다(시스템·Judge 재실행 없음, 결과 `rescore_core.json`).
+`scripts/analysis/classify_must_include.py`(LLM `gemini-3.8-flash`)가 270문항의 `must_include` 항목 795개를 **핵심(core) 642개(81%)와 부가(extra) 153개(19%)**로 나눴다(`06_results/eval/must_include_core.json`, 항목마다 이유 포함). 기준은 "질문이 직접 묻는 결론·수치·조건·행동이면 핵심, 단서·한계·참고처럼 빠져도 핵심 답이 성립하면 부가"다. 이어서 저장된 Judge 결과의 항목별 충족 여부로 `scripts/analysis/rescore_core.py`가 다시 집계했다(시스템·Judge 재실행 없음, 결과 `rescore_core.json`).
 
 | 지표 | 기본 RAG | Multi-Agent |
 |---|---:|---:|

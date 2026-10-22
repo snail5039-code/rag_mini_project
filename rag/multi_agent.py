@@ -51,7 +51,13 @@ class FinalAnswer(BaseModel):
     response_type: ResponseType
     answer: str
     citations: list[int] = Field(description="답변에 사용한 문서 번호(1부터)")
+    core_answered: bool = Field(description="질문이 직접 묻는 핵심(값·조건·결론)을 문서 근거로 답했는가. "
+                                            "관련 내용만 쓰고 핵심은 '확인할 수 없다'고 했다면 false")
     reason: str
+
+
+# 평가 판정이 정한 응답 유형. 답변 Agent가 문장은 쓰되 유형은 뒤집지 못한다.
+FORCED_TYPE = {"out_of_scope": "abstain", "inappropriate": "refuse", "ambiguous": "clarify"}
 
 
 EVALUATE_PROMPT = f"""당신은 검색 결과 평가 Agent입니다. 질문과 검색 문서를 보고 다음 중 하나를 판정합니다.
@@ -84,7 +90,7 @@ ANSWER_PROMPT = f"""당신은 답변 Agent입니다. 제공된 <documents>만 �
 - abstain: 문서로 확인할 수 없음. 이유와 확인할 곳을 안내합니다.
 - refuse : 부적절한 요청. 이유를 짧게 밝히고 가능한 일반 정보만 안내합니다.
 근거 일부만 확인된 경우 확인된 부분은 인용과 함께 답하고(response_type은 answer 또는 correct), 확인하지 못한 부분만 문서에서 확인할 수 없다고 분명히 적습니다.
-abstain은 질문의 핵심에 답할 근거가 문서에 전혀 없을 때만 씁니다. 재검색이 끝났다(stop_reason=max_rounds)는 이유만으로 abstain을 고르지 않습니다.
+core_answered에는 질문이 직접 묻는 핵심(값·조건·결론)을 문서 근거로 답했는지를 정직하게 적습니다. 관련 내용만 소개하고 핵심은 확인할 수 없다고 썼다면 false입니다.
 문서 표현 그대로의 조건·기간·수치를 정확히 옮기고, answer·correct에서는 사용한 문서 번호를 citations에 넣습니다.
 {COMMON_RULES}"""
 
@@ -165,7 +171,16 @@ class MultiAgentRAG:
         queries = [q for q in state["pending_queries"] if q not in used][:MAX_QUERIES_PER_ROUND]  # 중복 검색 차단
         children = list(state["children"])
         parents = list(state["parents"])
-        known = {p["parent_id"] for p in parents}
+        known = {p["parent_id"] for p in parents}   # 버린 parent도 다시 들이지 않는다
+        evaluation = state.get("evaluation")
+        pruned = None
+        if state["round"] > 0 and evaluation:
+            # 재검색 전에 평가가 쓸모 있다고 본 문서만 남겨, 새 근거가 문맥 상한에 막히지 않게 한다.
+            keep = [i for i in dict.fromkeys(evaluation.get("relevant_docs") or []) if 1 <= i <= len(parents)]
+            if keep:
+                pruned = len(parents) - len(keep)
+                parents = [parents[i - 1] for i in keep]
+                evaluation = {**evaluation, "relevant_docs": list(range(1, len(keep) + 1))}
         new_count = 0
         degraded = list(state.get("degraded") or [])
         fallback_queries = []
@@ -196,9 +211,16 @@ class MultiAgentRAG:
                 "queries": queries, "new_parents": new_count, "context_parents": len(parents)}
         if fallback_queries:
             step["fallback"] = {"retriever": "bm25", "queries": fallback_queries}
-        return {"round": state["round"] + 1, "used_queries": used, "pending_queries": [], "children": children,
-                "parents": parents, "new_parents_last_round": new_count, "usage": usage, "degraded": degraded,
-                "trace": state["trace"] + [step]}
+        if pruned is not None:
+            step["pruned_parents"] = pruned
+        out = {"round": state["round"] + 1, "used_queries": used, "pending_queries": [], "children": children,
+               "parents": parents, "new_parents_last_round": new_count, "usage": usage, "degraded": degraded,
+               "trace": state["trace"] + [step]}
+        if evaluation is not None:
+            out["evaluation"] = evaluation
+        if state["round"] > 0 and new_count == 0:
+            out["stop_reason"] = "no_new_evidence"   # 같은 문맥을 다시 평가하지 않고 바로 답변한다
+        return out
 
     def evaluate(self, state: State) -> State:
         user = f"{format_documents(state['parents'])}\n\n<question>\n{state['question']}\n</question>"
@@ -248,7 +270,8 @@ class MultiAgentRAG:
 
     def answer(self, state: State) -> State:
         parents = state["parents"]
-        reason = self.stop_reason(state) or "research_aborted"   # 정상 경로에서는 항상 값이 있다
+        # 정상 경로에서는 항상 값이 있다
+        reason = state.get("stop_reason") or self.stop_reason(state) or "research_aborted"
         user = (f"{format_documents(parents)}\n\n<evaluation>\n{state['evaluation']}\n"
                 f"stop_reason={reason}\n</evaluation>\n\n<question>\n{state['question']}\n</question>")
         try:
@@ -263,9 +286,25 @@ class MultiAgentRAG:
             return {"final": final, "stop_reason": reason, "degraded": _degrade(state, "answer_failed", e),
                     "trace": state["trace"] + [{"step": "answer", "stop_reason": reason, "response_type": "abstain",
                                                 "degraded": True}]}
-        return {"final": out.model_dump(), "usage": _add_usage(state, usage), "stop_reason": reason,
-                "trace": state["trace"] + [{"step": "answer", "stop_reason": reason,
-                                            "response_type": out.response_type}]}
+        final = out.model_dump()
+        step = {"step": "answer", "stop_reason": reason, "response_type": out.response_type,
+                "core_answered": out.core_answered}
+        forced = self.decide_type(state["evaluation"], final)
+        if forced != final["response_type"]:
+            step["type_override"] = f"{final['response_type']}->{forced}"
+            final["response_type"] = forced
+        return {"final": final, "usage": _add_usage(state, usage), "stop_reason": reason,
+                "trace": state["trace"] + [step]}
+
+    @staticmethod
+    def decide_type(evaluation: dict, final: dict) -> str:
+        """응답 유형을 코드로 확정한다. 평가의 범위 밖·부적절·모호 판정은 그대로 따르고,
+        answer·correct인데 핵심을 답하지 못했다고 스스로 밝히면 abstain으로 바꾼다."""
+        if not evaluation.get("degraded") and evaluation["decision"] in FORCED_TYPE:
+            return FORCED_TYPE[evaluation["decision"]]
+        if final["response_type"] in ("answer", "correct") and not final.get("core_answered", True):
+            return "abstain"
+        return final["response_type"]
 
     # -------------------------------------------------------------- 분기 (오케스트레이터의 종료 조건)
     @staticmethod
@@ -275,9 +314,10 @@ class MultiAgentRAG:
             return "evaluated"
         if state["round"] >= MAX_SEARCH_ROUNDS:
             return "max_rounds"
-        if state["round"] > 1 and state.get("new_parents_last_round", 0) == 0:
-            return "no_new_evidence"   # 같은 결과 반복
-        return None
+        return None   # 새 근거가 없는 재검색은 search 직후 route_after_search가 끊는다
+
+    def route_after_search(self, state: State) -> str:
+        return "answer" if state.get("stop_reason") == "no_new_evidence" else "evaluate"
 
     def route_after_evaluate(self, state: State) -> str:
         return "feedback" if self.stop_reason(state) is None else "answer"
@@ -288,7 +328,7 @@ class MultiAgentRAG:
             g.add_node(name, getattr(self, name))
         g.set_entry_point("orchestrator")
         g.add_edge("orchestrator", "search")
-        g.add_edge("search", "evaluate")
+        g.add_conditional_edges("search", self.route_after_search, {"answer": "answer", "evaluate": "evaluate"})
         g.add_conditional_edges("evaluate", self.route_after_evaluate, {"answer": "answer", "feedback": "feedback"})
         g.add_conditional_edges("feedback", lambda st: "answer" if st.get("abort_research") else "improve",
                                 {"answer": "answer", "improve": "improve"})

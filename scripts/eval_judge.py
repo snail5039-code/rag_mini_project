@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from rag import config, llm  # noqa: E402
+from rag.basic_rag import doc_base_date  # noqa: E402
 from scripts.run_rag import load_cases  # noqa: E402
 
 JUDGE_MODEL = "gemini-3.8-flash"
@@ -68,7 +69,10 @@ def build_user(case: dict, rec: dict, parents: dict) -> str:
     ctx = []
     for i, p in enumerate(rec["delivered_parents"], 1):
         pc = parents.get(p["parent_id"], {})
-        ctx.append(f"[문서 {i}] {pc.get('file_name', '')} p.{pc.get('page_no', '')}\n{pc.get('content', '(원문 없음)')}")
+        # 시스템이 문서 기준일을 받은 실행(guards)이면 Judge에게도 같은 기준일을 보여 준다
+        date = doc_base_date(pc.get("file_name", "")) if rec.get("_with_dates") else None
+        date_txt = f" (문서 기준일: {date})" if date else ""
+        ctx.append(f"[문서 {i}] {pc.get('file_name', '')} p.{pc.get('page_no', '')}{date_txt}\n{pc.get('content', '(원문 없음)')}")
     cites = [f"{c['file_name']} p.{c['page_no']}" for c in rec["citations"]]
     return (
         f"## 질문\n{case['question']}\n\n"
@@ -138,6 +142,9 @@ def main() -> None:
     args = ap.parse_args()
 
     recs = [json.loads(l) for l in (RUN_DIR / f"{args.run}.jsonl").read_text(encoding="utf-8").splitlines()]
+    run_params = json.loads((RUN_DIR / f"{args.run}.summary.json").read_text(encoding="utf-8")).get("params", {})
+    for r in recs:
+        r["_with_dates"] = bool(run_params.get("guards"))
     ap_dir = Path(args.answers_dir)
     cases = {c["case_id"]: c for c in load_cases(["base", "negative", "life", "add"], ap_dir)}
     recs = [r for r in recs if not args.cases or r["case_id"] in args.cases]

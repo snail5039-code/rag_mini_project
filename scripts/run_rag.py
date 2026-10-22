@@ -137,6 +137,8 @@ def main() -> None:
                     help="Multi-Agent 답변 방식 (parts: 질문 요소 점검표 후 답변)")
     ap.add_argument("--review", action="store_true", help="Multi-Agent 답변 뒤 검토 Agent 실행")
     ap.add_argument("--answer-model", default=config.ANSWER_MODEL, help="Multi-Agent 답변 Agent 모델")
+    ap.add_argument("--parts-research", action="store_true", help="v9: 점검표의 '문서에 없음' 요소로 재검색 후 재답변")
+    ap.add_argument("--guards", action="store_true", help="v8: 문서 기준일·시점/모호성 판정·근거 없는 단정 금지 규칙")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--no-save", action="store_true")
@@ -158,7 +160,8 @@ def main() -> None:
     def make():
         if args.pipeline == "multi":
             return MultiAgentRAG(db.connect(), embedder, bm25, answer_style=args.answer_style, review=args.review,
-                                 answer_model=args.answer_model)
+                                 answer_model=args.answer_model, guards=args.guards,
+                                 parts_research=args.parts_research)
         return BasicRAG(db.connect(), embedder)
 
     def work(case):

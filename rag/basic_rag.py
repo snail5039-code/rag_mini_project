@@ -46,11 +46,39 @@ def scope_files(conn, experiment_id: str, question_set: str) -> list[str]:
     return sorted(r[0] for r in rows)
 
 
-def format_documents(parents: list[dict]) -> str:
+_BASE_DATES: dict[str, str] | None = None
+
+
+def doc_base_date(file_name: str) -> str | None:
+    """문서 기준 시점. 약관은 첫 쪽의 '원문 기준일', 추가 PDF는 파일명의 연도."""
+    global _BASE_DATES
+    if _BASE_DATES is None:
+        import json
+        import re
+        _BASE_DATES = {}
+        with open(config.EXTRACTED_PATH, encoding="utf-8") as f:
+            for line in f:
+                page = json.loads(line)
+                if page["page_no"] != 1:
+                    continue
+                text = "\n".join(b["text"] for b in page["blocks"])
+                m = re.search(r"기준일:\s*(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.", text)
+                if m:
+                    _BASE_DATES[page["file_name"]] = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+                else:
+                    y = re.search(r"_(20\d{2})\.pdf$", page["file_name"])
+                    if y:
+                        _BASE_DATES[page["file_name"]] = f"{y.group(1)}년 자료"
+    return _BASE_DATES.get(file_name)
+
+
+def format_documents(parents: list[dict], with_dates: bool = False) -> str:
     blocks = []
     for i, p in enumerate(parents, start=1):
         pages = f"{p['page_no']}" if p["page_no"] == p["page_end"] else f"{p['page_no']}-{p['page_end']}"
-        blocks.append(f"<document index=\"{i}\" file=\"{p['file_name']}\" pages=\"{pages}\" "
+        date = doc_base_date(p["file_name"]) if with_dates else None
+        date_attr = f" base_date=\"{date}\"" if date else ""
+        blocks.append(f"<document index=\"{i}\" file=\"{p['file_name']}\" pages=\"{pages}\"{date_attr} "
                       f"title=\"{p['section_title']}\">\n{p['content']}\n</document>")
     return "<documents>\n" + "\n".join(blocks) + "\n</documents>"
 

@@ -103,6 +103,8 @@ python scripts/run_rag.py --pipeline multi --tag v7
 | `--answer-style` | `parts_guide`(기본, 점검표+안내 규칙) / `parts` / `plain` |
 | `--answer-model` | 답변 Agent 모델 (기본 `ANSWER_MODEL`) |
 | `--review` | 답변 검토 Agent 추가 (실험 결과 미채택, 기본 꺼짐) |
+| `--guards` | 문서 기준일 제공, 시점·모호성 판정 규칙, 근거 없는 단정 금지 (v8, 미채택) |
+| `--parts-research` | 점검표에서 근거 없는 요소로 재검색 (v9, 미채택) |
 | `--answers-dir` | 다른 기준 답안 폴더 (골든셋: `team_golden_set/03_answers`) |
 | `--cases`, `--sets`, `--limit` | 일부 문항만 실행 |
 | `--no-save` | 저장하지 않고 결과만 출력 |
@@ -118,6 +120,8 @@ python scripts/eval_judge.py --run <run_id>
 - 채점 모델 `gemini-3.8-flash`, 항목: 정확성, 필수 항목 충족, 금지 내용 위반, 근거 충실성, 인용 적합성, 대응 적절성.
 - 골든셋 실행을 채점할 때는 `--answers-dir team_golden_set/03_answers`를 함께 줍니다.
 - 결과: `06_results/eval/<run_id>__judge.jsonl`, `__judge.summary.json`
+- `--guards`로 실행한 기록은 Judge 문맥에도 같은 문서 기준일을 넣어 채점합니다.
+- 만점이 아닌 문항의 점검표: `python scripts/make_judge_audit.py --run <run_id> --answers-dir <기준 답안 폴더> --out docs/judge_audit.md`
 
 여러 실행 비교표:
 

@@ -15,7 +15,7 @@ from typing import Literal, TypedDict
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
-from . import config
+from . import config, guardrail
 from .basic_rag import ResponseType, format_documents, scope_files
 from .llm import FATAL_CODES, FatalLLMError, generate_structured
 from .retrieval import BM25Retriever, HybridRetriever, VectorRetriever, fetch_parents
@@ -299,6 +299,9 @@ class MultiAgentRAG:
     # -------------------------------------------------------------- 실행
     def run(self, question: str, question_set: str) -> dict:
         started = time.perf_counter()
+        bad = guardrail.validate_question(question)
+        if bad:   # 빈 질문·과도하게 긴 질문은 LLM·검색 없이 안내한다
+            return guardrail.input_rejection(bad, self.pipeline, round((time.perf_counter() - started) * 1000))
         s = self.graph.invoke({"question": question, "question_set": question_set}, {"recursion_limit": 30})
         parents, final = s["parents"], s["final"]
         valid = [i for i in dict.fromkeys(final["citations"]) if 1 <= i <= len(parents)]
@@ -322,6 +325,7 @@ class MultiAgentRAG:
                                    "chars": len(p["content"])} for p in parents],
             "trace": s["trace"],
             "usage": {**s["usage"], "elapsed_ms": round((time.perf_counter() - started) * 1000)},
+            "guardrail_flags": guardrail.check_output(final["response_type"], final["answer"], len(valid)),
             "degraded": bool(s.get("degraded")),
             "degraded_reasons": list(s.get("degraded") or []),
         }

@@ -2,7 +2,7 @@
 
     PYTHONIOENCODING=utf-8 python scripts/test_g2_fallback.py
 (1) 임베딩 실패 -> BM25 대체  (2) evaluate 실패  (3) feedback 실패  (4) improve 실패  (5) answer 실패 -> 안전 응답
-(6) FatalLLMError는 어느 노드에서든 그대로 전파  (7) 정상 경로는 수정 전 코드(git HEAD)와 응답·트레이스·호출 수가 같음
+(6) FatalLLMError는 어느 노드에서든 그대로 전파  (7) 정상 경로는 수정 전 코드(G2 이전 커밋 3b8bedc)와 응답·트레이스·호출 수가 같음
 
 주의: 점수 집계(run_rag.check)는 degraded 응답을 실패로 세야 한다(안전 응답이 abstain 기대 문항을 우연히 통과해
 점수가 부풀려지는 것을 막는다). 그 처리는 scripts/run_rag.py 쪽 변경이다.
@@ -67,8 +67,8 @@ class FakeLLM:
 
 
 def load_original():
-    """git HEAD의 multi_agent.py를 임시 모듈로 불러온다(수정 전 코드와 비교용)."""
-    src = subprocess.run(["git", "show", "HEAD:rag/multi_agent.py"], cwd=ROOT, capture_output=True, check=True).stdout.decode("utf-8")
+    """G2 이전 커밋(3b8bedc)의 multi_agent.py를 임시 모듈로 불러온다(수정 전 코드와 비교용)."""
+    src = subprocess.run(["git", "show", "3b8bedc:rag/multi_agent.py"], cwd=ROOT, capture_output=True, check=True).stdout.decode("utf-8")
     mod = types.ModuleType("rag.multi_agent_orig")
     mod.__package__ = "rag"
     sys.modules[mod.__name__] = mod   # pydantic이 `from __future__ import annotations`의 타입 이름을 찾으려면 필요
@@ -156,7 +156,7 @@ def main():
         e = raises(Exception, lambda: rag.run(QUESTION, QSET))
         check("6 임베더의 FatalLLMError 전파(BM25로 숨기지 않음)", isinstance(e, FatalLLMError))
 
-        # (7) 정상 경로: 수정 전 코드(git HEAD)와 같은 응답·트레이스·호출 수
+        # (7) 정상 경로: 수정 전 코드(G2 이전 커밋 3b8bedc)와 같은 응답·트레이스·호출 수
         orig = load_original()
         for label, first_eval in (("재검색 경로", "insufficient"), ("바로 답변 경로", "sufficient")):
             llm_new, llm_old = FakeLLM(first_eval=first_eval), FakeLLM(first_eval=first_eval)
@@ -164,9 +164,10 @@ def main():
             old = build(orig, conn, bm25, FakeEmbedder(), llm_old).run(QUESTION, QSET)
             new_c, old_c = copy.deepcopy(new), copy.deepcopy(old)
             flags = (new_c.pop("degraded"), new_c.pop("degraded_reasons"))
+            gflags = new_c.pop("guardrail_flags")   # GR3이 더한 키(기록만)
             for r in (new_c, old_c):
                 r["usage"].pop("elapsed_ms")
-            check(f"7 정상 경로 불변 ({label})", new_c == old_c and flags == (False, []) and llm_new.calls == llm_old.calls,
+            check(f"7 정상 경로 불변 ({label})", new_c == old_c and flags == (False, []) and gflags == [] and llm_new.calls == llm_old.calls,
                   f"calls={llm_new.calls}")
     finally:
         multi_agent.generate_structured = orig_gs

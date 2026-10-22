@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from . import config
+from . import config, guardrail
 from .llm import generate_structured
 from .retrieval import fetch_parents, make_retriever
 
@@ -72,6 +72,9 @@ class BasicRAG:
 
     def run(self, question: str, question_set: str) -> dict:
         started = time.perf_counter()
+        bad = guardrail.validate_question(question)
+        if bad:   # 빈 질문·과도하게 긴 질문은 LLM·검색 없이 안내한다
+            return guardrail.input_rejection(bad, self.pipeline, round((time.perf_counter() - started) * 1000))
         if question_set not in self._scopes:
             self._scopes[question_set] = scope_files(self.conn, self.experiment_id, question_set)
         files = self._scopes[question_set]
@@ -104,4 +107,5 @@ class BasicRAG:
                       {"step": "judge_and_answer", "decision": out.response_type,
                        "evidence_sufficient": out.evidence_sufficient}],
             "usage": {**usage, "search_calls": 1, "elapsed_ms": round((time.perf_counter() - started) * 1000)},
+            "guardrail_flags": guardrail.check_output(out.response_type, out.answer, len(valid)),
         }

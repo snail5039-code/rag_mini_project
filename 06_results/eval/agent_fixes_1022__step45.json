@@ -1,0 +1,939 @@
+{
+ "before": [
+  "20261022_112146__multi_agent__both_golden",
+  "20261022_112213__multi_agent__both_golden",
+  "20261022_112243__multi_agent__both_golden"
+ ],
+ "after": [
+  "20261022_120050__multi_agent__both_golden",
+  "20261022_120056__multi_agent__both_golden",
+  "20261022_120124__multi_agent__both_golden"
+ ],
+ "before_stats": {
+  "all": {
+   "behavior_strict": {
+    "runs": [
+     0.6148,
+     0.6111,
+     0.6333
+    ],
+    "mean": 0.6198,
+    "range": 0.0222
+   },
+   "behavior_lenient": {
+    "runs": [
+     0.9741,
+     0.9704,
+     0.9704
+    ],
+    "mean": 0.9716,
+    "range": 0.0037
+   },
+   "judge_correctness": {
+    "runs": [
+     0.8889,
+     0.8889,
+     0.8833
+    ],
+    "mean": 0.887,
+    "range": 0.0056
+   },
+   "judge_full": {
+    "runs": [
+     0.7815,
+     0.7852,
+     0.7741
+    ],
+    "mean": 0.7802,
+    "range": 0.0111
+   },
+   "judge_full_core_adjusted": {
+    "runs": [
+     0.9222,
+     0.9037,
+     0.9074
+    ],
+    "mean": 0.9111,
+    "range": 0.0185
+   },
+   "must_include_coverage": {
+    "runs": [
+     0.9103,
+     0.9064,
+     0.9034
+    ],
+    "mean": 0.9067,
+    "range": 0.0069
+   },
+   "must_not_violation": {
+    "runs": [
+     0.0074,
+     0.0185,
+     0.0148
+    ],
+    "mean": 0.0136,
+    "range": 0.0111
+   },
+   "faithfulness": {
+    "runs": [
+     0.9963,
+     0.9944,
+     0.9963
+    ],
+    "mean": 0.9957,
+    "range": 0.0019
+   },
+   "context_recall": {
+    "runs": [
+     0.8034,
+     0.7957,
+     0.8015
+    ],
+    "mean": 0.8002,
+    "range": 0.0077
+   },
+   "context_recall_answerable": {
+    "runs": [
+     0.9599,
+     0.95,
+     0.9591
+    ],
+    "mean": 0.9563,
+    "range": 0.0099
+   },
+   "citation_hit_answerable": {
+    "runs": [
+     0.9905,
+     0.9905,
+     0.9952
+    ],
+    "mean": 0.9921,
+    "range": 0.0048
+   },
+   "citation_recall_answerable": {
+    "runs": [
+     0.9262,
+     0.9242,
+     0.9258
+    ],
+    "mean": 0.9254,
+    "range": 0.002
+   },
+   "avg_tokens": {
+    "runs": [
+     10331.437,
+     10327.6667,
+     10186.5037
+    ],
+    "mean": 10281.8691,
+    "range": 144.9333
+   },
+   "avg_seconds": {
+    "runs": [
+     22.6797,
+     22.976,
+     22.9843
+    ],
+    "mean": 22.88,
+    "range": 0.3046
+   },
+   "re_search_rate": {
+    "runs": [
+     0.0593,
+     0.0667,
+     0.0556
+    ],
+    "mean": 0.0605,
+    "range": 0.0111
+   },
+   "errors": {
+    "runs": [
+     0,
+     0,
+     0
+    ],
+    "mean": 0,
+    "range": 0
+   }
+  },
+  "provided": {
+   "behavior_strict": {
+    "runs": [
+     0.5056,
+     0.5056,
+     0.5278
+    ],
+    "mean": 0.513,
+    "range": 0.0222
+   },
+   "behavior_lenient": {
+    "runs": [
+     0.9833,
+     0.9778,
+     0.9778
+    ],
+    "mean": 0.9796,
+    "range": 0.0056
+   },
+   "judge_correctness": {
+    "runs": [
+     0.9222,
+     0.9167,
+     0.9083
+    ],
+    "mean": 0.9157,
+    "range": 0.0139
+   },
+   "judge_full": {
+    "runs": [
+     0.8444,
+     0.8389,
+     0.8222
+    ],
+    "mean": 0.8352,
+    "range": 0.0222
+   },
+   "judge_full_core_adjusted": {
+    "runs": [
+     0.9444,
+     0.9333,
+     0.9111
+    ],
+    "mean": 0.9296,
+    "range": 0.0333
+   },
+   "must_include_coverage": {
+    "runs": [
+     0.9377,
+     0.9318,
+     0.9232
+    ],
+    "mean": 0.9309,
+    "range": 0.0145
+   },
+   "must_not_violation": {
+    "runs": [
+     0.0,
+     0.0056,
+     0.0056
+    ],
+    "mean": 0.0037,
+    "range": 0.0056
+   },
+   "faithfulness": {
+    "runs": [
+     1.0,
+     1.0,
+     0.9972
+    ],
+    "mean": 0.9991,
+    "range": 0.0028
+   },
+   "context_recall": {
+    "runs": [
+     0.781,
+     0.7694,
+     0.7801
+    ],
+    "mean": 0.7769,
+    "range": 0.0116
+   },
+   "context_recall_answerable": {
+    "runs": [
+     0.9499,
+     0.9358,
+     0.9488
+    ],
+    "mean": 0.9448,
+    "range": 0.0141
+   },
+   "citation_hit_answerable": {
+    "runs": [
+     0.9932,
+     0.9865,
+     0.9932
+    ],
+    "mean": 0.991,
+    "range": 0.0068
+   },
+   "citation_recall_answerable": {
+    "runs": [
+     0.92,
+     0.9105,
+     0.9127
+    ],
+    "mean": 0.9144,
+    "range": 0.0096
+   },
+   "avg_tokens": {
+    "runs": [
+     10086.1,
+     10036.1778,
+     10014.1889
+    ],
+    "mean": 10045.4889,
+    "range": 71.9111
+   },
+   "avg_seconds": {
+    "runs": [
+     22.2112,
+     22.5563,
+     22.4043
+    ],
+    "mean": 22.3906,
+    "range": 0.3451
+   },
+   "re_search_rate": {
+    "runs": [
+     0.0333,
+     0.0333,
+     0.0278
+    ],
+    "mean": 0.0315,
+    "range": 0.0056
+   },
+   "errors": {
+    "runs": [
+     0,
+     0,
+     0
+    ],
+    "mean": 0,
+    "range": 0
+   }
+  },
+  "team": {
+   "behavior_strict": {
+    "runs": [
+     0.8333,
+     0.8222,
+     0.8444
+    ],
+    "mean": 0.8333,
+    "range": 0.0222
+   },
+   "behavior_lenient": {
+    "runs": [
+     0.9556,
+     0.9556,
+     0.9556
+    ],
+    "mean": 0.9556,
+    "range": 0.0
+   },
+   "judge_correctness": {
+    "runs": [
+     0.8222,
+     0.8333,
+     0.8333
+    ],
+    "mean": 0.8296,
+    "range": 0.0111
+   },
+   "judge_full": {
+    "runs": [
+     0.6556,
+     0.6778,
+     0.6778
+    ],
+    "mean": 0.6704,
+    "range": 0.0222
+   },
+   "judge_full_core_adjusted": {
+    "runs": [
+     0.8778,
+     0.8444,
+     0.9
+    ],
+    "mean": 0.8741,
+    "range": 0.0556
+   },
+   "must_include_coverage": {
+    "runs": [
+     0.8556,
+     0.8556,
+     0.8639
+    ],
+    "mean": 0.8583,
+    "range": 0.0083
+   },
+   "must_not_violation": {
+    "runs": [
+     0.0222,
+     0.0444,
+     0.0333
+    ],
+    "mean": 0.0333,
+    "range": 0.0222
+   },
+   "faithfulness": {
+    "runs": [
+     0.9889,
+     0.9833,
+     0.9944
+    ],
+    "mean": 0.9889,
+    "range": 0.0111
+   },
+   "context_recall": {
+    "runs": [
+     0.8481,
+     0.8481,
+     0.8444
+    ],
+    "mean": 0.8469,
+    "range": 0.0037
+   },
+   "context_recall_answerable": {
+    "runs": [
+     0.9839,
+     0.9839,
+     0.9839
+    ],
+    "mean": 0.9839,
+    "range": 0.0
+   },
+   "citation_hit_answerable": {
+    "runs": [
+     0.9839,
+     1.0,
+     1.0
+    ],
+    "mean": 0.9946,
+    "range": 0.0161
+   },
+   "citation_recall_answerable": {
+    "runs": [
+     0.9409,
+     0.957,
+     0.957
+    ],
+    "mean": 0.9516,
+    "range": 0.0161
+   },
+   "avg_tokens": {
+    "runs": [
+     10822.1111,
+     10910.6444,
+     10531.1333
+    ],
+    "mean": 10754.6296,
+    "range": 379.5111
+   },
+   "avg_seconds": {
+    "runs": [
+     23.6167,
+     23.8152,
+     24.1441
+    ],
+    "mean": 23.8587,
+    "range": 0.5274
+   },
+   "re_search_rate": {
+    "runs": [
+     0.1111,
+     0.1333,
+     0.1111
+    ],
+    "mean": 0.1185,
+    "range": 0.0222
+   },
+   "errors": {
+    "runs": [
+     0,
+     0,
+     0
+    ],
+    "mean": 0,
+    "range": 0
+   }
+  }
+ },
+ "after_stats": {
+  "all": {
+   "behavior_strict": {
+    "runs": [
+     0.6778,
+     0.6963,
+     0.6778
+    ],
+    "mean": 0.684,
+    "range": 0.0185
+   },
+   "behavior_lenient": {
+    "runs": [
+     0.9704,
+     0.9704,
+     0.9741
+    ],
+    "mean": 0.9716,
+    "range": 0.0037
+   },
+   "judge_correctness": {
+    "runs": [
+     0.8815,
+     0.8852,
+     0.8833
+    ],
+    "mean": 0.8833,
+    "range": 0.0037
+   },
+   "judge_full": {
+    "runs": [
+     0.7741,
+     0.7741,
+     0.7741
+    ],
+    "mean": 0.7741,
+    "range": 0.0
+   },
+   "judge_full_core_adjusted": {
+    "runs": [
+     0.9185,
+     0.9148,
+     0.8963
+    ],
+    "mean": 0.9099,
+    "range": 0.0222
+   },
+   "must_include_coverage": {
+    "runs": [
+     0.9016,
+     0.9001,
+     0.8946
+    ],
+    "mean": 0.8988,
+    "range": 0.007
+   },
+   "must_not_violation": {
+    "runs": [
+     0.0148,
+     0.0148,
+     0.0185
+    ],
+    "mean": 0.016,
+    "range": 0.0037
+   },
+   "faithfulness": {
+    "runs": [
+     0.9926,
+     0.9981,
+     0.9944
+    ],
+    "mean": 0.9951,
+    "range": 0.0056
+   },
+   "context_recall": {
+    "runs": [
+     0.8022,
+     0.8028,
+     0.7454
+    ],
+    "mean": 0.7834,
+    "range": 0.0574
+   },
+   "context_recall_answerable": {
+    "runs": [
+     0.9583,
+     0.9575,
+     0.9583
+    ],
+    "mean": 0.9581,
+    "range": 0.0008
+   },
+   "citation_hit_answerable": {
+    "runs": [
+     0.9905,
+     0.9857,
+     0.9905
+    ],
+    "mean": 0.9889,
+    "range": 0.0048
+   },
+   "citation_recall_answerable": {
+    "runs": [
+     0.9242,
+     0.9214,
+     0.921
+    ],
+    "mean": 0.9222,
+    "range": 0.0032
+   },
+   "avg_tokens": {
+    "runs": [
+     9841.5778,
+     9658.7444,
+     9933.4333
+    ],
+    "mean": 9811.2519,
+    "range": 274.6889
+   },
+   "avg_seconds": {
+    "runs": [
+     20.9298,
+     20.0213,
+     20.46
+    ],
+    "mean": 20.4704,
+    "range": 0.9085
+   },
+   "re_search_rate": {
+    "runs": [
+     0.0556,
+     0.0519,
+     0.0778
+    ],
+    "mean": 0.0617,
+    "range": 0.0259
+   },
+   "errors": {
+    "runs": [
+     0,
+     0,
+     0
+    ],
+    "mean": 0,
+    "range": 0
+   }
+  },
+  "provided": {
+   "behavior_strict": {
+    "runs": [
+     0.5667,
+     0.5944,
+     0.5722
+    ],
+    "mean": 0.5778,
+    "range": 0.0278
+   },
+   "behavior_lenient": {
+    "runs": [
+     0.9722,
+     0.9722,
+     0.9889
+    ],
+    "mean": 0.9778,
+    "range": 0.0167
+   },
+   "judge_correctness": {
+    "runs": [
+     0.9083,
+     0.9194,
+     0.9139
+    ],
+    "mean": 0.9139,
+    "range": 0.0111
+   },
+   "judge_full": {
+    "runs": [
+     0.8278,
+     0.8444,
+     0.8333
+    ],
+    "mean": 0.8352,
+    "range": 0.0167
+   },
+   "judge_full_core_adjusted": {
+    "runs": [
+     0.9333,
+     0.9389,
+     0.9167
+    ],
+    "mean": 0.9296,
+    "range": 0.0222
+   },
+   "must_include_coverage": {
+    "runs": [
+     0.9251,
+     0.9257,
+     0.9267
+    ],
+    "mean": 0.9258,
+    "range": 0.0016
+   },
+   "must_not_violation": {
+    "runs": [
+     0.0111,
+     0.0056,
+     0.0056
+    ],
+    "mean": 0.0074,
+    "range": 0.0056
+   },
+   "faithfulness": {
+    "runs": [
+     0.9944,
+     1.0,
+     1.0
+    ],
+    "mean": 0.9981,
+    "range": 0.0056
+   },
+   "context_recall": {
+    "runs": [
+     0.7792,
+     0.7782,
+     0.7792
+    ],
+    "mean": 0.7789,
+    "range": 0.0009
+   },
+   "context_recall_answerable": {
+    "runs": [
+     0.9476,
+     0.9465,
+     0.9476
+    ],
+    "mean": 0.9473,
+    "range": 0.0011
+   },
+   "citation_hit_answerable": {
+    "runs": [
+     0.9865,
+     0.9865,
+     0.9932
+    ],
+    "mean": 0.9887,
+    "range": 0.0068
+   },
+   "citation_recall_answerable": {
+    "runs": [
+     0.9048,
+     0.911,
+     0.9105
+    ],
+    "mean": 0.9088,
+    "range": 0.0062
+   },
+   "avg_tokens": {
+    "runs": [
+     9550.2278,
+     9481.2944,
+     9566.7611
+    ],
+    "mean": 9532.7611,
+    "range": 85.4667
+   },
+   "avg_seconds": {
+    "runs": [
+     20.9196,
+     19.8206,
+     20.0288
+    ],
+    "mean": 20.2563,
+    "range": 1.0989
+   },
+   "re_search_rate": {
+    "runs": [
+     0.0278,
+     0.0222,
+     0.05
+    ],
+    "mean": 0.0333,
+    "range": 0.0278
+   },
+   "errors": {
+    "runs": [
+     0,
+     0,
+     0
+    ],
+    "mean": 0,
+    "range": 0
+   }
+  },
+  "team": {
+   "behavior_strict": {
+    "runs": [
+     0.9,
+     0.9,
+     0.8889
+    ],
+    "mean": 0.8963,
+    "range": 0.0111
+   },
+   "behavior_lenient": {
+    "runs": [
+     0.9667,
+     0.9667,
+     0.9444
+    ],
+    "mean": 0.9593,
+    "range": 0.0222
+   },
+   "judge_correctness": {
+    "runs": [
+     0.8278,
+     0.8167,
+     0.8222
+    ],
+    "mean": 0.8222,
+    "range": 0.0111
+   },
+   "judge_full": {
+    "runs": [
+     0.6667,
+     0.6333,
+     0.6556
+    ],
+    "mean": 0.6519,
+    "range": 0.0333
+   },
+   "judge_full_core_adjusted": {
+    "runs": [
+     0.8889,
+     0.8667,
+     0.8556
+    ],
+    "mean": 0.8704,
+    "range": 0.0333
+   },
+   "must_include_coverage": {
+    "runs": [
+     0.8546,
+     0.8491,
+     0.8306
+    ],
+    "mean": 0.8448,
+    "range": 0.0241
+   },
+   "must_not_violation": {
+    "runs": [
+     0.0222,
+     0.0333,
+     0.0444
+    ],
+    "mean": 0.0333,
+    "range": 0.0222
+   },
+   "faithfulness": {
+    "runs": [
+     0.9889,
+     0.9944,
+     0.9833
+    ],
+    "mean": 0.9889,
+    "range": 0.0111
+   },
+   "context_recall": {
+    "runs": [
+     0.8481,
+     0.8519,
+     0.6778
+    ],
+    "mean": 0.7926,
+    "range": 0.1741
+   },
+   "context_recall_answerable": {
+    "runs": [
+     0.9839,
+     0.9839,
+     0.9839
+    ],
+    "mean": 0.9839,
+    "range": 0.0
+   },
+   "citation_hit_answerable": {
+    "runs": [
+     1.0,
+     0.9839,
+     0.9839
+    ],
+    "mean": 0.9892,
+    "range": 0.0161
+   },
+   "citation_recall_answerable": {
+    "runs": [
+     0.9704,
+     0.9462,
+     0.9462
+    ],
+    "mean": 0.9543,
+    "range": 0.0242
+   },
+   "avg_tokens": {
+    "runs": [
+     10424.2778,
+     10013.6444,
+     10666.7778
+    ],
+    "mean": 10368.2333,
+    "range": 653.1333
+   },
+   "avg_seconds": {
+    "runs": [
+     20.9502,
+     20.4227,
+     21.3225
+    ],
+    "mean": 20.8985,
+    "range": 0.8999
+   },
+   "re_search_rate": {
+    "runs": [
+     0.1111,
+     0.1111,
+     0.1333
+    ],
+    "mean": 0.1185,
+    "range": 0.0222
+   },
+   "errors": {
+    "runs": [
+     0,
+     0,
+     0
+    ],
+    "mean": 0,
+    "range": 0
+   }
+  }
+ },
+ "case_flips": {
+  "behavior_strict": {
+   "fixed": [
+    "ADD-HP02",
+    "ADD-HP07",
+    "ADD-IN01",
+    "ADD-IN11",
+    "ADD-IN12",
+    "ADD-IN15",
+    "ADD-RP01",
+    "ADD-RP03",
+    "ADD-RP11",
+    "ADD-SE01",
+    "ADD-SE02",
+    "ADD-SE12",
+    "ADD-SE14",
+    "NEG032",
+    "POS027",
+    "POS030",
+    "POS039",
+    "POS065",
+    "POS076",
+    "POS083"
+   ],
+   "broken": []
+  },
+  "judge_full": {
+   "fixed": [
+    "ADD-HF12",
+    "ADD-IN03",
+    "ADD-IN06",
+    "POS053",
+    "POS058",
+    "POS096",
+    "POS116"
+   ],
+   "broken": [
+    "ADD-HF15",
+    "ADD-IN11",
+    "ADD-RP06",
+    "ADD-SE13",
+    "ADD-SE14",
+    "POS015",
+    "POS110"
+   ]
+  }
+ }
+}

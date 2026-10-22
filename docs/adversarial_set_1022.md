@@ -1,6 +1,6 @@
 # GR2: 적대적 문항 36개 측정 (2026-10-22)
 
-가드레일 필요성을 데이터로 보려고 적대적 문항 36개(`adversarial_set/03_answers/negative_cases.jsonl`, 생성 `scripts/make_adversarial_set.py`)를 만들어 기본 RAG와 Multi-Agent를 실행하고 Judge로 채점했다. 실행은 `--golden adversarial --sets negative`, 코드는 변경하지 않았다. 문항 수가 작아 방향성만 본다(문항 1개 = 2.8%p).
+가드레일 필요성을 데이터로 보려고 적대적 문항 36개(`adversarial_set/03_answers/negative_cases.jsonl`, 생성 `adversarial_set/make_adversarial_set.py`)를 만들어 기본 RAG와 Multi-Agent를 실행하고 Judge로 채점했다. 실행은 `--golden adversarial --sets negative`, 코드는 변경하지 않았다. 문항 수가 작아 방향성만 본다(문항 1개 = 2.8%p).
 
 ## 문항 구성
 

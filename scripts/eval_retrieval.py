@@ -5,7 +5,7 @@
   python scripts/eval_retrieval.py --no-save                         # DB·파일에 저장하지 않음
 
 지표는 child 단계(검색기가 근거를 찾았나)와 parent 단계(답변 Agent가 받는 문맥에 근거가 있나)로 나눈다.
-결과는 PostgreSQL(retrieval_eval_runs/cases)과 06_results/*.json에 저장한다.
+결과는 PostgreSQL(retrieval_eval_runs/cases)과 06_results/retrieval/*.json에 저장한다.
 """
 import argparse
 import json
@@ -27,7 +27,7 @@ from rag.retrieval import fetch_parents, make_retriever
 FILES = {"base": "positive_cases.jsonl", "life": "positive_life_guide_cases.jsonl", "add": "additional_cases.jsonl"}
 CHILD_KS = (1, 3, 5, 8, 10)
 PARENT_KS = (1, 3, 5)
-RESULT_DIR = config.ROOT / "06_results"
+RESULT_DIR = config.ROOT / "06_results" / "retrieval"
 
 
 def load_cases() -> list[dict]:

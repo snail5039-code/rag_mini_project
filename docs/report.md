@@ -265,6 +265,6 @@ Judge 정확성 1점 이상이면서 금지 내용 위반이 없는 비율입니
 | v5 / v6 / v7 | `06_results/rag/*__v5_guide*`, `*__v6_review*`, `*__v7_ans37flash*` | |
 | v8 / v9 / v10 / v11 | `06_results/rag/*__v8_guards*`, `*__v9_parts_research*`, `*__v10_detail*`, `*__v11_fewshot*` | v8 Judge는 기준일 보정 후 재채점본, v11은 `EXCLUDE_CASES`로 예시 4문항 제외 비교 |
 | 골든셋 | `20261021_141224__basic_rag__golden`, `20261021_141045__multi_agent__golden`, `20261021_151449__multi_agent__v4_golden_final`, `*__v7_golden_final` | |
-| 검색 평가 | `retrieval_eval_runs` (청킹 5종 × 검색기 4종, 제목 prefix 비교), `06_results/*.json`, `06_results/question_type_retrieval.json` | |
+| 검색 평가 | `retrieval_eval_runs` (청킹 5종 × 검색기 4종, 제목 prefix 비교), `06_results/retrieval/*.json`, `06_results/retrieval/question_type_retrieval.json` | |
 
-Judge 결과는 `06_results/eval/<run_id>__judge.jsonl`·`.summary.json`에 있고, 비교표는 `scripts/compare_runs.py`로 다시 만들 수 있습니다.
+Judge 결과는 `06_results/eval/<run_id>__judge.jsonl`·`.summary.json`에 있고, 비교표는 `scripts/analysis/compare_runs.py`로 다시 만들 수 있습니다.

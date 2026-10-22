@@ -71,7 +71,7 @@
    print(c.models.generate_content(model='gemini-3.8-flash',contents='안녕이라고만 답해').text)"
    ```
 3. 새 계정에서 아래 모델을 쓸 수 있는지 확인한다: 답변 `gemini-3.6-flash`, Judge/Ragas `gemini-3.8-flash`, 임베딩 `gemini-embedding-2`(차원 1536). 모델이 다르면 비교 가능성이 깨지므로 같은 모델을 써야 한다. 임베딩은 **DB에 이미 적재**되어 있어 다시 만들 필요가 없고, 질문 임베딩만 호출한다.
-4. PostgreSQL 서비스(`postgresql-x64-17`)가 켜져 있고 `rag` DB에 청크가 적재되어 있는지 확인한다(`scripts/check_retrieval.py` 또는 다음 쿼리). `.env`에 `POSTGRES_DB=rag`여야 한다.
+4. PostgreSQL 서비스(`postgresql-x64-17`)가 켜져 있고 `rag` DB에 청크가 적재되어 있는지 확인한다(`scripts/dev/check_retrieval.py` 또는 다음 쿼리). `.env`에 `POSTGRES_DB=rag`여야 한다.
    ```bash
    cd /e/rag_mini_project && python -c "
    import psycopg,os; from dotenv import load_dotenv; load_dotenv('.env')
@@ -114,15 +114,15 @@ PYTHONIOENCODING=utf-8 python scripts/eval_judge.py --run <run_id> --workers 16
 # 경로 평가 (LLM 경로 Judge는 --llm-judge-n 0 이면 호출 없음)
 PYTHONIOENCODING=utf-8 python scripts/eval_trajectory.py --run <run_id> --llm-judge-n 0
 # 실패 원인 분류 / 두 실행 비교 / 변동 폭 / 재채점
-PYTHONIOENCODING=utf-8 python scripts/analyze_failures.py --runs "라벨=run_id" ... --out <파일명>.json
-PYTHONIOENCODING=utf-8 python scripts/compare_runs.py --base <run_id> --new <run_id> --name <이름>
-PYTHONIOENCODING=utf-8 python scripts/variance.py
-PYTHONIOENCODING=utf-8 python scripts/rescore_core.py      # 핵심/부가 기준 재채점 (LLM 없음)
-PYTHONIOENCODING=utf-8 python scripts/rescore_nonllm.py    # 답할 수 없는 질문 제외 재집계 (LLM 없음)
+PYTHONIOENCODING=utf-8 python scripts/analysis/analyze_failures.py --runs "라벨=run_id" ... --out <파일명>.json
+PYTHONIOENCODING=utf-8 python scripts/analysis/compare_runs.py --base <run_id> --new <run_id> --name <이름>
+PYTHONIOENCODING=utf-8 python scripts/analysis/variance.py
+PYTHONIOENCODING=utf-8 python scripts/analysis/rescore_core.py      # 핵심/부가 기준 재채점 (LLM 없음)
+PYTHONIOENCODING=utf-8 python scripts/analysis/rescore_nonllm.py    # 답할 수 없는 질문 제외 재집계 (LLM 없음)
 # Ragas (별도 가상환경)
 .venv_ragas/Scripts/python.exe scripts/eval_ragas.py --run <run_id> --n 50
 # 크레딧이 끊겨 일부 문항이 오류(402)로 실패했을 때: 실패 문항만 다시 돌려 합치기
-python scripts/merge_retry.py --run <원래 run_id> --retry <재실행 run_id> --keep-dir 06_results/eval/<폴더>
+python scripts/analysis/merge_retry.py --run <원래 run_id> --retry <재실행 run_id> --keep-dir 06_results/eval/<폴더>
 ```
 
 주의: PowerShell이 아니라 Git Bash에서 실행한 명령이다. Windows 콘솔에서 한글이 깨지면 `PYTHONIOENCODING=utf-8`을 붙인다. 사용자 계정의 셸 환경변수에 `POSTGRES_DB` 같은 값이 있으면 `.env`보다 우선하므로(`load_dotenv`는 덮어쓰지 않음) 다른 `.env`를 `source`한 셸에서 실행하지 않는다.

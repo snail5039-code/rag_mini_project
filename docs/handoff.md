@@ -19,7 +19,7 @@
 | PDF 추출 | 완료 | `04_extracted/extracted_pages.jsonl` (490쪽, 블록 3,277개), 추출 비용은 README 1장 |
 | 청킹 | 완료 | `scripts/build_chunks.py` → `05_chunks/` (git 제외, 다시 생성 가능) |
 | 임베딩·DB 적재 | 완료 | `parent_child_300_60__gemini-embedding-2_1536` (child 3,041 / parent 965) |
-| 검색 평가 | 완료 | 기준 설정 Parent-Child 300/60 + Vector (child MRR 0.885), `06_results/*.json` |
+| 검색 평가 | 완료 | 기준 설정 Parent-Child 300/60 + Vector (child MRR 0.885), `06_results/retrieval/*.json` |
 | 기본 RAG · Multi-Agent | 완료 | `rag/basic_rag.py`, `rag/multi_agent.py` |
 | 팀 골든셋 | 작성·자동 검사 완료 | `team_golden_set/` 90문항. 사람 원문 확인은 진행 중 |
 | 제공 + 팀 골든셋 평가 | 완료 (응답 유형·인용) | `06_results/rag/*both_golden*`, 결과 표는 README 5장 |

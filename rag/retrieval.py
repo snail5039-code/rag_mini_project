@@ -21,16 +21,22 @@ def _rows(cur) -> list[dict]:
 
 def vector_search(conn: psycopg.Connection, query_vec, experiment_id: str, child_k: int = 8,
                   scope_files: list[str] | None = None, with_embedding: bool = False) -> list[dict]:
-    """상위 child_k개 청크. distance는 cosine 거리(작을수록 가깝다)."""
+    """상위 child_k개 청크. distance는 cosine 거리(작을수록 가깝다).
+
+    HNSW 인덱스는 근접 후보(ef_search=40)를 먼저 뽑고 file_name 조건으로 거르므로, 범위가 좁으면(추가 PDF 6개)
+    결과가 k개보다 적거나 0개가 된다. 청크가 수천 개라 정확 검색도 질의당 약 10ms여서 인덱스를 쓰지 않는다.
+    """
     extra = ", embedding" if with_embedding else ""
     sql = f"""SELECT {_CHUNK_COLS}{extra}, embedding <=> %(q)s::vector AS distance
               FROM chunks
               WHERE experiment_id = %(exp)s AND (%(files)s::text[] IS NULL OR file_name = ANY(%(files)s))
               ORDER BY embedding <=> %(q)s::vector
               LIMIT %(k)s"""
-    cur = conn.execute(sql, {"q": np.asarray(query_vec, dtype=np.float32), "exp": experiment_id,
-                             "files": scope_files, "k": child_k})
-    return _rows(cur)
+    with conn.transaction():
+        conn.execute("SET LOCAL enable_indexscan = off")
+        cur = conn.execute(sql, {"q": np.asarray(query_vec, dtype=np.float32), "exp": experiment_id,
+                                 "files": scope_files, "k": child_k})
+        return _rows(cur)
 
 
 def fetch_parents(conn: psycopg.Connection, experiment_id: str, children: list[dict],

@@ -133,7 +133,7 @@ def main() -> None:
     ap.add_argument("--answers-dir", type=Path, default=config.ANSWERS_DIR,
                     help="기준 답안 폴더 (골든셋: team_golden_set/03_answers)")
     ap.add_argument("--tag", default="", help="run_id 끝에 붙일 이름 (예: golden)")
-    ap.add_argument("--answer-style", choices=["plain", "parts", "parts_guide"], default="parts_guide",
+    ap.add_argument("--answer-style", choices=["plain", "parts", "parts_guide", "detail", "fewshot"], default="parts_guide",
                     help="Multi-Agent 답변 방식 (parts: 질문 요소 점검표 후 답변)")
     ap.add_argument("--review", action="store_true", help="Multi-Agent 답변 뒤 검토 Agent 실행")
     ap.add_argument("--answer-model", default=config.ANSWER_MODEL, help="Multi-Agent 답변 Agent 모델")

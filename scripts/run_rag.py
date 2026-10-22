@@ -14,7 +14,7 @@ import sys
 import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -231,6 +231,10 @@ def main() -> None:
         return
     suffix = "" if args.golden == "provided" else f"__{args.golden}_golden"
     run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}__{pipeline}{suffix}"
+    # 병렬 실행이 같은 초에 끝나면 run_id가 겹친다(저장 실패). 겹치면 1초씩 뒤로 민다.
+    while conn.execute("SELECT 1 FROM rag_runs WHERE run_id = %s", (run_id,)).fetchone():
+        stamp = datetime.strptime(run_id[:15], "%Y%m%d_%H%M%S") + timedelta(seconds=1)
+        run_id = f"{stamp.strftime('%Y%m%d_%H%M%S')}{run_id[15:]}"
     conn.execute("INSERT INTO rag_runs (run_id, pipeline, params, summary) VALUES (%s, %s, %s, %s)",
                  (run_id, pipeline, Jsonb(params), Jsonb(summary)))
     with conn.cursor() as cur:

@@ -4,7 +4,11 @@
 
 ## 결과 요약
 
+> **Multi-Agent RAG의 답변 정확도를 0.792 → 0.887로 올렸습니다.** 정확성 만점 비율은 0.599 → 0.780, 실패 문항은 131건 → 84건입니다.
+
 270문항(제공 180 + 팀 골든셋 90), 같은 설정을 3회 실행한 평균, LLM Judge(`gemini-3.8-flash`) 채점입니다.
+
+![최종 성능 비교](docs/images/final_02_compare.png)
 
 | 지표 | 기본 RAG | Multi-Agent (개선 전) | **Multi-Agent (최종)** |
 |---|---:|---:|---:|
@@ -18,6 +22,9 @@
 - 최종 Multi-Agent의 세트별 Judge 정확성은 **제공 180: 0.916**, **팀 골든셋 90: 0.830**입니다. 처음 보는 질문에 가까운 팀 골든셋 수치를 최종 성능으로 봅니다.
 - 개선의 대부분은 **답변 Agent가 질문 요소 점검표를 먼저 쓰게 한 것**(+0.064)과 **답변 모델 교체**(+0.023)에서 나왔습니다. 과정은 [6장](#6-개선-과정)에 있습니다.
 - 지어낸 내용은 거의 없습니다(충실성 0.996). 남은 감점은 대부분 "핵심은 맞지만 단서·예외 항목 하나가 빠진" 경우입니다.
+- 대신 문항당 비용이 기본 RAG의 약 3배입니다(아래 그림). 정확도가 중요한 금융 상담에서는 감수할 만하다고 판단했습니다.
+
+![비용 비교](docs/images/final_04_cost.png)
 
 ## 문서
 
@@ -189,6 +196,8 @@ flowchart TD
 
 ## 6. 개선 과정
 
+![단계별 정확도](docs/images/final_01_progress.png)
+
 | 단계 | 바꾼 것 | Judge 정확성 | 만점 비율 | 평균 토큰 | 판정 |
 |---|---|---:|---:|---:|---|
 | 기준선 | Multi-Agent 초기 버전 | 0.792 | 0.599 | 7,639 | |
@@ -198,6 +207,10 @@ flowchart TD
 | 개선 2 | 다중 근거 질문 분해 검색 | 0.800 | 0.609 | 9,743 | 검색 누락 24 → 18건, 비용 +29% |
 | 개선 3a | 답변 Agent에 질문 요소 점검표·보류 안내 규칙 | 0.864 | 0.737 | 10,221 | **가장 큰 효과** |
 | **개선 3b** | 답변 모델 → `gemini-3.7-flash` | **0.887** | **0.780** | 10,282 | **최종** |
+
+실패 원인별로 보면, 가장 컸던 "내용 불완전"이 87건에서 50건으로 가장 많이 줄었습니다.
+
+![실패 원인](docs/images/final_03_failures.png)
 
 배운 점:
 - **프롬프트에 지시 한 줄을 더하는 방식은 효과가 없었고, 구조를 바꾼 것이 효과가 있었습니다.** 답변 완전성은 "빠짐없이 쓰라"는 지시(P1)로는 오르지 않았습니다. 반면 답하기 전에 질문 요소와 근거를 **출력 구조로 먼저 쓰게 하자**(3a) +0.064가 올랐습니다. 이 규칙은 정원하 브랜치(`feature/chunking-retrieval`)의 v4·v5에서 가져왔습니다.
@@ -255,6 +268,7 @@ python scripts/run_rag.py --pipeline multi --golden both --workers 12
 python scripts/eval_judge.py --run <run_id> --workers 12
 python scripts/analyze_failures.py --runs 라벨=<run_id>
 python scripts/compare_fixes.py --before <run_id> ... --after <run_id> ...
+python scripts/make_final_figures.py   # README 그림 (저장된 결과만 사용)
 
 # 5. 테스트 (가짜 LLM, API 비용 없음, 로컬 DB 필요)
 python scripts/test_agent_fixes.py

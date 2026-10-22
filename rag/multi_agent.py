@@ -177,7 +177,7 @@ class MultiAgentRAG:
     def params(self) -> dict:
         return {"experiment_id": self.experiment_id, "child_k": self.child_k, "max_parents_per_query": self.max_parents,
                 "max_context_parents": MAX_CONTEXT_PARENTS, "max_search_rounds": MAX_SEARCH_ROUNDS,
-                "generation_model": config.GENERATION_MODEL,
+                "generation_model": config.GENERATION_MODEL, "answer_model": config.ANSWER_MODEL,
                 "prompts": {"decompose": DECOMPOSE_PROMPT, "evaluate": EVALUATE_PROMPT, "feedback": FEEDBACK_PROMPT,
                             "improve": IMPROVE_PROMPT, "answer": ANSWER_PROMPT}}
 
@@ -320,7 +320,7 @@ class MultiAgentRAG:
         user = (f"{format_documents(parents)}\n\n<evaluation>\n{state['evaluation']}\n"
                 f"stop_reason={reason}\n</evaluation>\n\n<question>\n{state['question']}\n</question>")
         try:
-            out, usage = generate_structured(ANSWER_PROMPT, user, FinalAnswer)
+            out, usage = generate_structured(ANSWER_PROMPT, user, FinalAnswer, model=config.ANSWER_MODEL)
         except FatalLLMError:
             raise
         except Exception as e:   # 답변 실패: 검색된 문서 제목만 알리는 안전 응답 (점수에서는 실패로 센다)

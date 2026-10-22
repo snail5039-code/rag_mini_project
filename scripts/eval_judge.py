@@ -135,7 +135,7 @@ def main() -> None:
     args = ap.parse_args()
 
     recs = [json.loads(l) for l in (RUN_DIR / f"{args.run}.jsonl").read_text(encoding="utf-8").splitlines()]
-    cases = {c["case_id"]: c for c in load_cases(["base", "negative", "life", "add"], ["provided", "team"])}
+    cases = {c["case_id"]: c for c in load_cases(["base", "negative", "life", "add"], ["provided", "team", "adversarial"])}
     recs = [r for r in recs if not args.cases or r["case_id"] in args.cases]
     parents = parent_store()
     rows, errors = [], []
@@ -157,7 +157,7 @@ def main() -> None:
         print("오류:", errors[:5], f"(총 {len(errors)}건)")
 
     summary = summarize(rows)
-    for k in ("all", "golden:provided", "golden:team"):
+    for k in ("all", "golden:provided", "golden:team", "golden:adversarial"):
         if k in summary:
             print(k, summary[k])
     if args.no_save:

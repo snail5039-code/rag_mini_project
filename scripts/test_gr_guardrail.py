@@ -62,6 +62,8 @@ check("GR3 카드번호 패턴", "pii_card_number" in g.check_output("abstain", 
 check("GR3 날짜·금액은 오탐 없음", g.check_output("answer", "2025년 12월 31일까지 600만원, 한도 9000000원", 1) == [])
 check("GR3 투자 권유 표현", "advice_phrase" in g.check_output("answer", "이 상품은 지금 매수하세요", 1))
 check("GR3 수익 보장 표현", "advice_phrase" in g.check_output("answer", "수익을 반드시 보장합니다", 1))
+check("GR3 '수익 보장 여부' 제목은 오탐 없음", g.check_output("answer", "**수익 보장 여부**: 보장되는 것은 아닙니다", 1) == [])
+check("GR3 문서 설명('수익이 보장되고')은 오탐 없음", g.check_output("answer", "원금 이상 수익이 보장되고 중도해지 시에도 손실이 없습니다", 1) == [])
 check("GR3 거절 응답의 권유 설명은 신호 없음", "advice_phrase" not in g.check_output("refuse", "특정 종목을 매수하세요라고 안내할 수 없습니다", 0))
 check("GR3 정상 설명은 오탐 없음", g.check_output("answer", "청약철회는 계약서류를 받은 날부터 7일 이내에 가능합니다.", 1) == [])
 

@@ -32,7 +32,8 @@ FILES = {"base": "positive_cases.jsonl", "negative": "negative_cases.jsonl",
          "life": "positive_life_guide_cases.jsonl", "add": "additional_cases.jsonl"}
 OUT_DIR = config.ROOT / "06_results" / "rag"
 # 제공 세트(03_answers)와 팀 골든셋(team_golden_set/03_answers)은 같은 파일 이름·형식이다.
-GOLDEN_DIRS = {"provided": config.ANSWERS_DIR, "team": config.ROOT / "team_golden_set" / "03_answers"}
+GOLDEN_DIRS = {"provided": config.ANSWERS_DIR, "team": config.ROOT / "team_golden_set" / "03_answers",
+               "adversarial": config.ROOT / "adversarial_set" / "03_answers"}   # 가드레일 측정용(--golden adversarial)
 
 
 def _parent_pages() -> dict[str, tuple[str, int, int]]:
@@ -155,7 +156,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline", choices=["basic", "multi"], default="basic")
     ap.add_argument("--sets", nargs="+", default=list(FILES))
-    ap.add_argument("--golden", choices=["provided", "team", "both"], default="provided",
+    ap.add_argument("--golden", choices=["provided", "team", "both", "adversarial"], default="provided",
                     help="provided: 제공 180문항, team: 팀 골든셋 90문항, both: 둘 다 (요약은 따로 집계)")
     ap.add_argument("--cases", nargs="+", help="특정 case_id만 실행")
     ap.add_argument("--limit", type=int)

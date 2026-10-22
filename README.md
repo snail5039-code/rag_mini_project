@@ -67,7 +67,7 @@
 |---|---|---|
 | 박의혁 | PDF 추출 및 검수 | `extraction/`, `04_extracted/` |
 | 정원하 | 파이프라인 설계, 청킹·임베딩, 검색 평가, 기본 RAG·Multi-Agent RAG | `docs/pipeline.md`, `rag/`, `scripts/`, `db/` |
-| 한용님 | 골든셋 작성·검수, 답변 품질·경로 평가, 실패 분석과 개선, 안정성·가드레일 | `team_golden_set/`, `adversarial_set/`, `scripts/eval_*.py`, `docs/eval_*.md` |
+| 한용님 | 골든셋 작성·검수, 답변 품질·경로 평가, 실패 분석과 개선, 안정성·가드레일 | `team_golden_set/`, `adversarial_set/`, `scripts/eval_*.py`, `scripts/analysis/`, `docs/eval_*.md` |
 
 ## 전체 구조
 
@@ -87,10 +87,15 @@
 | `02_questions/`, `03_answers/` | 제공 질문 180개와 기준 답안 |
 | `extraction/`, `04_extracted/` | PDF 추출 코드와 결과(`extracted_pages.jsonl`) |
 | `rag/` | 청킹, 임베딩, 검색기, 기본 RAG, Multi-Agent RAG, 가드레일 |
-| `scripts/` | DB 초기화, 청크 적재, 검색 평가, RAG 실행, 채점·분석, 테스트 |
+| `scripts/` | 실행 순서대로 쓰는 파이프라인: `init_db` → `build_chunks` → `load_chunks` → `eval_retrieval` → `run_rag` → `eval_judge`(`eval_ragas`, `eval_trajectory`) |
+| `scripts/analysis/` | 결과 분석: 실패 원인(`analyze_failures`), 실행 비교(`compare_*`, `variance`), 재채점(`rescore_*`) |
+| `scripts/figures/` | README·문서의 그림 생성 (저장된 결과만 읽음, LLM 호출 없음) |
+| `scripts/dev/` | 개발 중 빠른 확인용 (`check_retrieval`, `compare_quick`) |
+| `tests/` | 가짜 LLM 테스트 (API 비용 없음, 로컬 DB 필요) |
 | `db/schema.sql` | PostgreSQL + pgvector 스키마 |
-| `06_results/` | 검색 평가, RAG 실행 기록(`rag/`), 채점 결과(`eval/`) |
-| `team_golden_set/`, `adversarial_set/` | 팀 골든셋 90문항, 가드레일 측정용 적대적 문항 36개 |
+| `06_results/` | 검색 평가(`retrieval/`), RAG 실행 기록(`rag/`), 채점·분석 결과(`eval/`) |
+| `team_golden_set/` | 팀 골든셋 90문항, 검수 결과, 생성 코드(`builders/`) |
+| `adversarial_set/` | 가드레일 측정용 적대적 문항 36개와 생성 코드 |
 
 **질문 세트**
 
@@ -291,15 +296,15 @@ python scripts/run_rag.py --pipeline multi --golden both --workers 12
 
 # 4. 채점·분석
 python scripts/eval_judge.py --run <run_id> --workers 12
-python scripts/analyze_failures.py --runs 라벨=<run_id>
-python scripts/compare_fixes.py --before <run_id> ... --after <run_id> ...
-python scripts/make_final_figures.py   # README 그림 (저장된 결과만 사용)
+python scripts/analysis/analyze_failures.py --runs 라벨=<run_id>
+python scripts/analysis/compare_fixes.py --before <run_id> ... --after <run_id> ...
+python scripts/figures/make_final_figures.py   # README 그림 (저장된 결과만 사용)
 
 # 5. 테스트 (가짜 LLM, API 비용 없음, 로컬 DB 필요)
-python scripts/test_agent_fixes.py
-python scripts/test_g1_fault_tolerance.py
-python scripts/test_g2_fallback.py
-python scripts/test_gr_guardrail.py
+python tests/test_agent_fixes.py
+python tests/test_g1_fault_tolerance.py
+python tests/test_g2_fallback.py
+python tests/test_gr_guardrail.py
 ```
 
 PDF를 다시 추출할 때만 `extraction/extract_pdfs.py` → `vision_fill.py` → `report.py` 순서로 실행합니다.

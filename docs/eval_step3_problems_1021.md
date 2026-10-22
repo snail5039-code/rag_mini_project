@@ -1,6 +1,6 @@
 # 3번: 문제 유형 분석과 개선점 (2026-10-21)
 
-근거: 1번 실행(기본 RAG·Multi-Agent, 제공 180 + 팀 90 = 270문항)과 2번 평가(`06_results/eval/*__judge`, `__trajectory`) 결과를 문항별로 합친 `06_results/eval/failure_analysis.json`(분류 코드 `scripts/analyze_failures.py`).
+근거: 1번 실행(기본 RAG·Multi-Agent, 제공 180 + 팀 90 = 270문항)과 2번 평가(`06_results/eval/*__judge`, `__trajectory`) 결과를 문항별로 합친 `06_results/eval/failure_analysis.json`(분류 코드 `scripts/analysis/analyze_failures.py`).
 실패 유형은 [README 5장·pipeline.md 3장](../docs/pipeline.md)의 기획서 분류(추출·청킹·검색·답변·인용·Agent)를 따른다.
 한 문항에 문제가 여러 개면 **주원인 하나**(응답 유형 → 추출 → 검색 → 인용 → 답변 순으로 처음 걸리는 것)로 세고, 건수는 문항 수다.
 

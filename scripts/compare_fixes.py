@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scripts.run_rag import OUT_DIR  # noqa: E402
+from scripts.run_rag import ANSWERING, OUT_DIR, load_cases  # noqa: E402
 
 EVAL = OUT_DIR.parent / "eval"
 
@@ -36,6 +36,14 @@ def metrics(run_id: str, cls: dict) -> tuple[dict, dict, dict]:
     def m(f, ks):
         return sum(f(k) for k in ks) / len(ks)
 
+    # 근거가 있는 답변 문항만으로 다시 계산한 인용·문맥 지표 (이전 실행의 저장된 점수에도 같은 기준을 적용)
+    answerable = {(c["golden"], c["case_id"]) for c in load_cases(["base", "negative", "life", "add"], ["provided", "team"])
+                  if c["expected_behavior"].startswith(ANSWERING) and c.get("expected_source_ids")}
+
+    def m_ans(field, ks):
+        vals = [rr[k]["checks"][field] for k in ks if k in answerable and rr[k]["checks"].get(field) is not None]
+        return sum(float(v) for v in vals) / len(vals) if vals else 0.0
+
     out = {}
     for g, ks in (("all", list(rr)), ("provided", [k for k in rr if k[0] == "provided"]),
                   ("team", [k for k in rr if k[0] == "team"])):
@@ -49,6 +57,9 @@ def metrics(run_id: str, cls: dict) -> tuple[dict, dict, dict]:
             "must_not_violation": m(lambda k: jj[k]["must_not_violation"], ks),
             "faithfulness": m(lambda k: jj[k]["faithfulness"] / 2, ks),
             "context_recall": m(lambda k: rr[k]["checks"].get("context_recall") or 0, ks),
+            "context_recall_answerable": m_ans("context_recall", ks),
+            "citation_hit_answerable": m_ans("citation_hit", ks),
+            "citation_recall_answerable": m_ans("citation_recall", ks),
             "avg_tokens": m(lambda k: rr[k]["usage"]["input_tokens"] + rr[k]["usage"]["output_tokens"], ks),
             "avg_seconds": m(lambda k: rr[k]["usage"]["elapsed_ms"] / 1000, ks),
             "re_search_rate": m(lambda k: rr[k].get("search_rounds", 1) > 1, ks),

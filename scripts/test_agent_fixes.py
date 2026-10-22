@@ -97,18 +97,25 @@ def main():
               and llm.calls.count("Evaluation") == 1 and llm.calls[-1] == "FinalAnswer", f"calls={llm.calls}")
 
         # (개선 2) 하위 질문 검색어를 첫 검색에 함께 쓰고, 검색어별 결과를 번갈아 담는다
-        llm = FakeLLM(evals=["sufficient"], improve_queries=[], sub_queries=["예금자보호 한도", QUESTION])
-        rec = run(conn, bm25, llm)
+        long_q = QUESTION + " 그리고 중도에 해지하면 환급금은 어떻게 계산되고 예금자보호는 얼마까지 되는지, 해지 절차는 어떻게 되는지도 알려 주세요."
+        llm = FakeLLM(evals=["sufficient"], improve_queries=[], sub_queries=["예금자보호 한도", long_q])
+        multi_agent.generate_structured = llm
+        rec = multi_agent.MultiAgentRAG(conn, FakeEmbedder(), bm25).run(long_q, QSET)
         s0 = [t for t in rec["trace"] if t["step"] == "search"][0]
         orch = rec["trace"][0]
-        check("2 분해 검색어 사용(원 질문 중복 제외)", s0["queries"] == [QUESTION, "예금자보호 한도"]
+        check("2 분해 검색어 사용(원 질문 중복 제외)", s0["queries"] == [long_q, "예금자보호 한도"]
               and orch.get("sub_queries") == ["예금자보호 한도"] and llm.calls[0] == "Decomposition", str(s0["queries"]))
         check("2 문맥 상한 유지", s0["context_parents"] <= multi_agent.MAX_CONTEXT_PARENTS, f"{s0['context_parents']}")
         llm = FakeLLM(evals=["sufficient"], improve_queries=[])
         llm.sub_queries = None   # 스키마 검증 실패 -> 원 질문만으로 검색
-        rec = run(conn, bm25, llm)
+        multi_agent.generate_structured = llm
+        rec = multi_agent.MultiAgentRAG(conn, FakeEmbedder(), bm25).run(long_q, QSET)
         check("2 분해 실패 시 원 질문만 검색", rec["trace"][0].get("decompose_failed")
-              and [t for t in rec["trace"] if t["step"] == "search"][0]["queries"] == [QUESTION] and not rec["degraded"])
+              and [t for t in rec["trace"] if t["step"] == "search"][0]["queries"] == [long_q] and not rec["degraded"])
+        llm = FakeLLM(evals=["sufficient"], improve_queries=[], sub_queries=["예금자보호 한도"])
+        rec = run(conn, bm25, llm)   # 짧은 질문
+        check("2 짧은 질문은 분해 호출 없음", rec["trace"][0].get("decompose_skipped") and "Decomposition" not in llm.calls,
+              f"calls={llm.calls}")
 
         # (D) 응답 유형 확정
         cases = [

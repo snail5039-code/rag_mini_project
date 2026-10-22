@@ -43,13 +43,14 @@ STEPS = [("기준선", MULTI, "before_stats"), ("A~D\n구조 수정", MULTI, "af
          ("개선 1\n강제 보류 끄기", load("agent_fixes_1022__step1.json"), "after_stats"),
          ("개선 2\n질문 분해 검색", load("agent_fixes_1022__step2.json"), "after_stats"),
          ("개선 3a\n점검표 답변", load("agent_fixes_1022__step3a.json"), "after_stats"),
-         ("개선 3b\n답변 모델 교체", load("agent_fixes_1022__step3b.json"), "after_stats")]
+         ("개선 3b\n답변 모델 교체", load("agent_fixes_1022__step3b.json"), "after_stats"),
+         ("개선 4·5\n분해 조건·라벨", load("agent_fixes_1022__step45.json"), "after_stats")]
 FINAL = STEPS[-1][1]
 
 
 def progress():
     """단계별 Judge 정확성·만점 비율 (3회 평균, 세로선은 최소~최대)."""
-    fig, ax = plt.subplots(figsize=(8.6, 4.2))
+    fig, ax = plt.subplots(figsize=(9.4, 4.2))
     xs = range(len(STEPS))
     for key, label, color in (("judge_correctness", "Judge 정확성", C_FINAL), ("judge_full", "정확성 만점 비율", C_BEFORE)):
         ss = [stat(d, side, key) for _, d, side in STEPS]
@@ -63,6 +64,7 @@ def progress():
                         ha="center", fontsize=9, color=INK)
     ax.axvspan(3.5, 5.5, color=C_FINAL, alpha=0.06, lw=0)
     ax.text(4.5, 0.53, "가장 큰 효과", ha="center", fontsize=9, color=INK2)
+    ax.text(6, 0.53, "비용 절감", ha="center", fontsize=9, color=INK2)
     ax.set_xticks(list(xs), [s[0] for s in STEPS], fontsize=9)
     ax.set_ylim(0.5, 0.95)
     ax.yaxis.grid(True, color=GRID, lw=0.8)

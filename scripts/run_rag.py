@@ -99,6 +99,9 @@ def check(case: dict, rec: dict) -> dict:
         "behavior_lenient": rec["response_type"] in allowed,
         "invalid_citations": len(rec["invalid_citations"]),
     }
+    if rec.get("degraded"):   # 대체 경로 응답이 기대 행동을 우연히 맞춰 점수를 부풀리지 않게 실패로 센다
+        out["behavior_strict"] = out["behavior_lenient"] = False
+        out["degraded"] = True
     if gold:
         out["context_recall"] = len(gold & delivered) / len(gold)
         out["citation_hit"] = bool(gold & cited)
@@ -210,7 +213,8 @@ def main() -> None:
     pipeline = "multi_agent" if args.pipeline == "multi" else "basic_rag"
     params = make().params()
 
-    print(f"\n문항 {len(results)}개, 오류 {summary['errors']}개")
+    degraded = sum(1 for r in results if (r.get("checks") or {}).get("degraded"))
+    print(f"\n문항 {len(results)}개, 오류 {summary['errors']}개" + (f", 대체 경로 응답 {degraded}개(점수에서 실패로 집계)" if degraded else ""))
     for r in [r for r in results if r.get("error")][:5]:
         print(f"  [오류] {r['case']['case_id']}: {r['error'][:200]}")
     print(f"{'group':34}{'n':>4}{'유형(엄격)':>10}{'유형(완화)':>10}{'문맥Rec':>9}{'인용Hit':>9}{'인용Rec':>9}{'must':>7}{'토큰':>7}{'ms':>7}")

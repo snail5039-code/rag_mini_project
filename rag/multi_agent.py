@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from . import config
 from .basic_rag import ResponseType, format_documents, scope_files
-from .llm import generate_structured
+from .llm import FATAL_CODES, FatalLLMError, generate_structured
 from .retrieval import BM25Retriever, HybridRetriever, VectorRetriever, fetch_parents
 
 MAX_SEARCH_ROUNDS = 3        # 첫 검색 + 재검색 2회
@@ -106,6 +106,11 @@ class State(TypedDict, total=False):
     usage: dict
     trace: list[dict]
     stop_reason: str
+    degraded: list[str]        # 대체 경로를 탄 사유 (정상이면 빈 목록)
+    abort_research: bool       # feedback/improve 실패로 재검색을 접고 답변으로 간다
+
+
+SAFE_ANSWER = "일시적인 오류로 답변을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
 
 
 def _add_usage(state: State, usage: dict) -> dict:
@@ -113,6 +118,11 @@ def _add_usage(state: State, usage: dict) -> dict:
     for k, v in usage.items():
         total[k] = total.get(k, 0) + v
     return total
+
+
+def _degrade(state: State, reason: str, exc: Exception) -> list[str]:
+    """대체 경로 사유를 누적한다. 재시도해도 소용없는 오류(FatalLLMError)는 호출 쪽에서 먼저 다시 던진다."""
+    return list(state.get("degraded") or []) + [f"{reason}: {type(exc).__name__}: {str(exc)[:120]}"]
 
 
 class MultiAgentRAG:
@@ -143,6 +153,7 @@ class MultiAgentRAG:
         return {"scope_files": self._scopes[qset], "round": 0, "used_queries": [],
                 "pending_queries": [state["question"]], "retriever": "vector", "children": [], "parents": [],
                 "usage": {"model_calls": 0, "search_calls": 0, "input_tokens": 0, "output_tokens": 0},
+                "degraded": [], "abort_research": False,
                 "trace": [{"step": "orchestrator", "scope_files": len(self._scopes[qset])}]}
 
     def search(self, state: State) -> State:
@@ -155,8 +166,23 @@ class MultiAgentRAG:
         parents = list(state["parents"])
         known = {p["parent_id"] for p in parents}
         new_count = 0
+        degraded = list(state.get("degraded") or [])
+        fallback_queries = []
         for q in queries:
-            found = retriever.search(q, self.embedder.embed_query(q), k=self.child_k, scope_files=state["scope_files"])
+            try:
+                qvec = self.embedder.embed_query(q)
+            except FatalLLMError:
+                raise
+            except Exception as e:
+                if getattr(e, "code", None) in FATAL_CODES:   # 결제·인증 오류는 BM25로 숨기지 않는다
+                    raise FatalLLMError(f"{e.code}: {e}") from e
+                if self.bm25 is None:
+                    raise
+                degraded = _degrade({"degraded": degraded}, "embedding_failed->bm25", e)
+                fallback_queries.append(q)
+                found = self.bm25.search(q, None, k=self.child_k, scope_files=state["scope_files"])
+            else:
+                found = retriever.search(q, qvec, k=self.child_k, scope_files=state["scope_files"])
             children += found
             for p in fetch_parents(self.conn, self.experiment_id, found, self.max_parents):
                 if p["parent_id"] not in known and len(parents) < MAX_CONTEXT_PARENTS:
@@ -165,15 +191,27 @@ class MultiAgentRAG:
                     new_count += 1
             used.append(q)
         usage = _add_usage(state, {"search_calls": len(queries)})
+        step = {"step": "search", "round": state["round"] + 1, "retriever": retriever.name,
+                "queries": queries, "new_parents": new_count, "context_parents": len(parents)}
+        if fallback_queries:
+            step["fallback"] = {"retriever": "bm25", "queries": fallback_queries}
         return {"round": state["round"] + 1, "used_queries": used, "pending_queries": [], "children": children,
-                "parents": parents, "new_parents_last_round": new_count, "usage": usage,
-                "trace": state["trace"] + [{"step": "search", "round": state["round"] + 1, "retriever": retriever.name,
-                                            "queries": queries, "new_parents": new_count,
-                                            "context_parents": len(parents)}]}
+                "parents": parents, "new_parents_last_round": new_count, "usage": usage, "degraded": degraded,
+                "trace": state["trace"] + [step]}
 
     def evaluate(self, state: State) -> State:
         user = f"{format_documents(state['parents'])}\n\n<question>\n{state['question']}\n</question>"
-        out, usage = generate_structured(EVALUATE_PROMPT, user, Evaluation)
+        try:
+            out, usage = generate_structured(EVALUATE_PROMPT, user, Evaluation)
+        except FatalLLMError:
+            raise
+        except Exception as e:   # 평가 실패: 현재 문맥으로 바로 답변한다 (기본 RAG 수준으로 저하)
+            reason = "현재 문맥으로 바로 답변 (평가 단계 오류)"
+            evaluation = {"decision": "sufficient", "relevant_docs": list(range(1, len(state["parents"]) + 1)),
+                          "covered": [], "missing": [], "reason": reason, "degraded": True}
+            return {"evaluation": evaluation, "degraded": _degrade(state, "evaluate_failed", e),
+                    "trace": state["trace"] + [{"step": "evaluate", "decision": "sufficient", "missing": [],
+                                                "reason": reason, "degraded": True}]}
         return {"evaluation": out.model_dump(), "usage": _add_usage(state, usage),
                 "trace": state["trace"] + [{"step": "evaluate", "decision": out.decision, "missing": out.missing,
                                             "reason": out.reason}]}
@@ -183,24 +221,47 @@ class MultiAgentRAG:
         user = (f"<question>\n{state['question']}\n</question>\n<evaluation>\n{state['evaluation']}\n</evaluation>\n"
                 f"<used_queries>\n{state['used_queries']}\n</used_queries>\n<retrieved_titles>\n" + "\n".join(titles)
                 + "\n</retrieved_titles>")
-        out, usage = generate_structured(FEEDBACK_PROMPT, user, Feedback)
+        try:
+            out, usage = generate_structured(FEEDBACK_PROMPT, user, Feedback)
+        except FatalLLMError:
+            raise
+        except Exception as e:   # 재검색을 접고 현재 문맥으로 답변한다
+            return {"abort_research": True, "degraded": _degrade(state, "feedback_failed", e),
+                    "trace": state["trace"] + [{"step": "feedback", "degraded": True}]}
         return {"feedback": out.model_dump(), "usage": _add_usage(state, usage),
                 "trace": state["trace"] + [{"step": "feedback", **out.model_dump()}]}
 
     def improve(self, state: State) -> State:
         user = (f"<question>\n{state['question']}\n</question>\n<feedback>\n{state['feedback']}\n</feedback>\n"
                 f"<used_queries>\n{state['used_queries']}\n</used_queries>")
-        out, usage = generate_structured(IMPROVE_PROMPT, user, Improvement)
+        try:
+            out, usage = generate_structured(IMPROVE_PROMPT, user, Improvement)
+        except FatalLLMError:
+            raise
+        except Exception as e:   # 재검색을 접고 현재 문맥으로 답변한다
+            return {"abort_research": True, "degraded": _degrade(state, "improve_failed", e),
+                    "trace": state["trace"] + [{"step": "improve", "degraded": True}]}
         queries = [q for q in out.queries if q.strip()][:MAX_QUERIES_PER_ROUND]
         return {"pending_queries": queries, "retriever": out.retriever, "usage": _add_usage(state, usage),
                 "trace": state["trace"] + [{"step": "improve", "queries": queries, "retriever": out.retriever}]}
 
     def answer(self, state: State) -> State:
         parents = state["parents"]
-        reason = self.stop_reason(state)
+        reason = self.stop_reason(state) or "research_aborted"   # 정상 경로에서는 항상 값이 있다
         user = (f"{format_documents(parents)}\n\n<evaluation>\n{state['evaluation']}\n"
                 f"stop_reason={reason}\n</evaluation>\n\n<question>\n{state['question']}\n</question>")
-        out, usage = generate_structured(ANSWER_PROMPT, user, FinalAnswer)
+        try:
+            out, usage = generate_structured(ANSWER_PROMPT, user, FinalAnswer)
+        except FatalLLMError:
+            raise
+        except Exception as e:   # 답변 실패: 검색된 문서 제목만 알리는 안전 응답 (점수에서는 실패로 센다)
+            titles = [f"{p['file_name']} {p['section_title']}" for p in parents]
+            text = SAFE_ANSWER + (("\n\n검색된 문서: " + ", ".join(titles)) if titles else "")
+            final = {"response_type": "abstain", "answer": text, "citations": [],
+                     "reason": "답변 생성 오류로 안전 응답을 냈습니다."}
+            return {"final": final, "stop_reason": reason, "degraded": _degrade(state, "answer_failed", e),
+                    "trace": state["trace"] + [{"step": "answer", "stop_reason": reason, "response_type": "abstain",
+                                                "degraded": True}]}
         return {"final": out.model_dump(), "usage": _add_usage(state, usage), "stop_reason": reason,
                 "trace": state["trace"] + [{"step": "answer", "stop_reason": reason,
                                             "response_type": out.response_type}]}
@@ -228,8 +289,10 @@ class MultiAgentRAG:
         g.add_edge("orchestrator", "search")
         g.add_edge("search", "evaluate")
         g.add_conditional_edges("evaluate", self.route_after_evaluate, {"answer": "answer", "feedback": "feedback"})
-        g.add_edge("feedback", "improve")
-        g.add_edge("improve", "search")
+        g.add_conditional_edges("feedback", lambda st: "answer" if st.get("abort_research") else "improve",
+                                {"answer": "answer", "improve": "improve"})
+        g.add_conditional_edges("improve", lambda st: "answer" if st.get("abort_research") else "search",
+                                {"answer": "answer", "search": "search"})
         g.add_edge("answer", END)
         return g.compile()
 
@@ -259,4 +322,6 @@ class MultiAgentRAG:
                                    "chars": len(p["content"])} for p in parents],
             "trace": s["trace"],
             "usage": {**s["usage"], "elapsed_ms": round((time.perf_counter() - started) * 1000)},
+            "degraded": bool(s.get("degraded")),
+            "degraded_reasons": list(s.get("degraded") or []),
         }

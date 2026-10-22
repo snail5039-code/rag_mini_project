@@ -51,13 +51,14 @@ class FinalAnswer(BaseModel):
     response_type: ResponseType
     answer: str
     citations: list[int] = Field(description="답변에 사용한 문서 번호(1부터)")
-    core_answered: bool = Field(description="질문이 직접 묻는 핵심(값·조건·결론)을 문서 근거로 답했는가. "
-                                            "관련 내용만 쓰고 핵심은 '확인할 수 없다'고 했다면 false")
+    core_answered: bool = Field(description="질문의 중심 물음(묻는 값·결론)에 문서 근거로 답했는가. 하위 질문 일부만 "
+                                            "확인할 수 없으면 true. 묻는 값 자체가 문서에 없어 관련 내용만 소개했다면 false")
     reason: str
 
 
 # 평가 판정이 정한 응답 유형. 답변 Agent가 문장은 쓰되 유형은 뒤집지 못한다.
-FORCED_TYPE = {"out_of_scope": "abstain", "inappropriate": "refuse", "ambiguous": "clarify"}
+# out_of_scope는 평가 단계의 오판이 많아(다중 질문의 일부만 없는 경우) 강제하지 않고 core_answered로 판단한다.
+FORCED_TYPE = {"inappropriate": "refuse", "ambiguous": "clarify"}
 
 
 EVALUATE_PROMPT = f"""당신은 검색 결과 평가 Agent입니다. 질문과 검색 문서를 보고 다음 중 하나를 판정합니다.
@@ -90,7 +91,7 @@ ANSWER_PROMPT = f"""당신은 답변 Agent입니다. 제공된 <documents>만 �
 - abstain: 문서로 확인할 수 없음. 이유와 확인할 곳을 안내합니다.
 - refuse : 부적절한 요청. 이유를 짧게 밝히고 가능한 일반 정보만 안내합니다.
 근거 일부만 확인된 경우 확인된 부분은 인용과 함께 답하고(response_type은 answer 또는 correct), 확인하지 못한 부분만 문서에서 확인할 수 없다고 분명히 적습니다.
-core_answered에는 질문이 직접 묻는 핵심(값·조건·결론)을 문서 근거로 답했는지를 정직하게 적습니다. 관련 내용만 소개하고 핵심은 확인할 수 없다고 썼다면 false입니다.
+core_answered에는 질문의 중심 물음(묻는 값·결론)에 문서 근거로 답했는지를 정직하게 적습니다. 여러 하위 질문 중 일부만 확인할 수 없으면 true이고, 묻는 값 자체가 문서에 없어 관련 내용만 소개했다면 false입니다.
 문서 표현 그대로의 조건·기간·수치를 정확히 옮기고, answer·correct에서는 사용한 문서 번호를 citations에 넣습니다.
 {COMMON_RULES}"""
 

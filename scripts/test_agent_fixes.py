@@ -96,7 +96,8 @@ def main():
 
         # (D) 응답 유형 확정
         cases = [
-            ("out_of_scope", "answer", True, "abstain"),
+            ("out_of_scope", "answer", True, "answer"),
+            ("out_of_scope", "answer", False, "abstain"),
             ("inappropriate", "answer", True, "refuse"),
             ("ambiguous", "answer", True, "clarify"),
             ("sufficient", "answer", False, "abstain"),
@@ -107,14 +108,14 @@ def main():
         for decision, typ, core, want in cases:
             got = multi_agent.MultiAgentRAG.decide_type({"decision": decision}, {"response_type": typ, "core_answered": core})
             check(f"D {decision}+{typ}(core={core}) -> {want}", got == want, f"got={got}")
-        got = multi_agent.MultiAgentRAG.decide_type({"decision": "out_of_scope", "degraded": True},
+        got = multi_agent.MultiAgentRAG.decide_type({"decision": "ambiguous", "degraded": True},
                                                     {"response_type": "answer", "core_answered": True})
         check("D 평가가 대체 경로(degraded)면 강제하지 않음", got == "answer")
-        llm = FakeLLM(evals=["out_of_scope"], improve_queries=[])
+        llm = FakeLLM(evals=["ambiguous"], improve_queries=[])
         rec = run(conn, bm25, llm)
         ans = [t for t in rec["trace"] if t["step"] == "answer"][0]
-        check("D 그래프에서 유형 뒤집기 기록", rec["response_type"] == "abstain"
-              and ans.get("type_override") == "answer->abstain", str(ans))
+        check("D 그래프에서 유형 뒤집기 기록", rec["response_type"] == "clarify"
+              and ans.get("type_override") == "answer->clarify", str(ans))
     finally:
         multi_agent.generate_structured = orig_gs
         conn.close()

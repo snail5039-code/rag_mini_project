@@ -57,6 +57,8 @@ class FakeLLM:
             decision = self.first_eval if self.evals == 1 else "sufficient"
             return schema(decision=decision, relevant_docs=[1], covered=["a"],
                           missing=["b"] if decision == "insufficient" else [], reason="r"), usage
+        if name == "Decomposition":
+            return schema(sub_queries=[]), usage
         if name == "Feedback":
             return schema(causes=["c"], targets=["t"]), usage
         if name == "Improvement":
@@ -171,7 +173,11 @@ def main():
                 r["usage"].pop("elapsed_ms")
             for t in new_c["trace"]:
                 t.pop("core_answered", None)   # D가 더한 키(기록용)
-            check(f"7 정상 경로 불변 ({label})", new_c == old_c and flags == (False, []) and gflags == [] and llm_new.calls == llm_old.calls,
+                t.pop("sub_queries", None)     # 개선 2(질문 분해)가 더한 키
+            for r in (new_c, old_c):           # 개선 2의 분해 호출 1회만큼 사용량이 다르다
+                r.pop("usage")
+            calls_new = [c for c in llm_new.calls if c != "Decomposition"]
+            check(f"7 정상 경로 불변 ({label})", new_c == old_c and flags == (False, []) and gflags == [] and calls_new == llm_old.calls,
                   f"calls={llm_new.calls}")
     finally:
         multi_agent.generate_structured = orig_gs

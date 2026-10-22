@@ -28,8 +28,8 @@ class FakeEmbedder:
 class FakeLLM:
     """evals: 라운드별 평가 판정 목록. improve_queries: 개선 Agent가 낼 검색어."""
 
-    def __init__(self, evals, improve_queries, final_type="answer", core=True, relevant=(1,)):
-        self.evals, self.improve_queries = list(evals), improve_queries
+    def __init__(self, evals, improve_queries, final_type="answer", core=True, relevant=(1,), sub_queries=()):
+        self.evals, self.improve_queries, self.sub_queries = list(evals), improve_queries, list(sub_queries)
         self.final_type, self.core, self.relevant, self.calls = final_type, core, list(relevant), []
 
     def __call__(self, system, user, schema, *a, **k):
@@ -40,6 +40,8 @@ class FakeLLM:
             d = self.evals.pop(0) if self.evals else "sufficient"
             return schema(decision=d, relevant_docs=self.relevant, covered=["a"],
                           missing=["b"] if d == "insufficient" else [], reason="r"), usage
+        if name == "Decomposition":
+            return schema(sub_queries=self.sub_queries), usage
         if name == "Feedback":
             return schema(causes=["c"], targets=["t"]), usage
         if name == "Improvement":
@@ -93,6 +95,20 @@ def main():
         rec = run(conn, bm25, llm)
         check("C 새 근거 없으면 바로 답변", rec["stop_reason"] == "no_new_evidence"
               and llm.calls.count("Evaluation") == 1 and llm.calls[-1] == "FinalAnswer", f"calls={llm.calls}")
+
+        # (개선 2) 하위 질문 검색어를 첫 검색에 함께 쓰고, 검색어별 결과를 번갈아 담는다
+        llm = FakeLLM(evals=["sufficient"], improve_queries=[], sub_queries=["예금자보호 한도", QUESTION])
+        rec = run(conn, bm25, llm)
+        s0 = [t for t in rec["trace"] if t["step"] == "search"][0]
+        orch = rec["trace"][0]
+        check("2 분해 검색어 사용(원 질문 중복 제외)", s0["queries"] == [QUESTION, "예금자보호 한도"]
+              and orch.get("sub_queries") == ["예금자보호 한도"] and llm.calls[0] == "Decomposition", str(s0["queries"]))
+        check("2 문맥 상한 유지", s0["context_parents"] <= multi_agent.MAX_CONTEXT_PARENTS, f"{s0['context_parents']}")
+        llm = FakeLLM(evals=["sufficient"], improve_queries=[])
+        llm.sub_queries = None   # 스키마 검증 실패 -> 원 질문만으로 검색
+        rec = run(conn, bm25, llm)
+        check("2 분해 실패 시 원 질문만 검색", rec["trace"][0].get("decompose_failed")
+              and [t for t in rec["trace"] if t["step"] == "search"][0]["queries"] == [QUESTION] and not rec["degraded"])
 
         # (D) 응답 유형 확정
         cases = [

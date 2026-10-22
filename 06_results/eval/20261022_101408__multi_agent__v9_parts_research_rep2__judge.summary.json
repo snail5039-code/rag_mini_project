@@ -1,0 +1,210 @@
+{
+  "run_id": "20261022_101408__multi_agent__v9_parts_research_rep2",
+  "judge_model": "gemini-3.8-flash",
+  "rubric": "judge_v1",
+  "temperature": 0.0,
+  "n": 180,
+  "errors": [],
+  "total_input_tokens": 621717,
+  "total_output_tokens": 43481,
+  "summary": {
+    "all": {
+      "n": 180,
+      "correctness": 0.897,
+      "correct_full": 0.811,
+      "must_include_coverage": 0.918,
+      "must_not_violation_rate": 0.006,
+      "faithfulness": 1.0,
+      "citation_support": 0.994,
+      "behavior_appropriate": 0.978,
+      "avg_judge_input_tokens": 3453.983
+    },
+    "golden:provided": {
+      "n": 180,
+      "correctness": 0.897,
+      "correct_full": 0.811,
+      "must_include_coverage": 0.918,
+      "must_not_violation_rate": 0.006,
+      "faithfulness": 1.0,
+      "citation_support": 0.994,
+      "behavior_appropriate": 0.978,
+      "avg_judge_input_tokens": 3453.983
+    },
+    "provided:set:positive": {
+      "n": 140,
+      "correctness": 0.907,
+      "correct_full": 0.821,
+      "must_include_coverage": 0.929,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 0.993,
+      "behavior_appropriate": 0.993,
+      "avg_judge_input_tokens": 3780.157
+    },
+    "provided:category:grounded_qa": {
+      "n": 140,
+      "correctness": 0.907,
+      "correct_full": 0.821,
+      "must_include_coverage": 0.929,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 0.993,
+      "behavior_appropriate": 0.993,
+      "avg_judge_input_tokens": 3780.157
+    },
+    "provided:qset:add": {
+      "n": 60,
+      "correctness": 0.875,
+      "correct_full": 0.767,
+      "must_include_coverage": 0.906,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 0.983,
+      "avg_judge_input_tokens": 5390.75
+    },
+    "provided:set:negative": {
+      "n": 40,
+      "correctness": 0.863,
+      "correct_full": 0.775,
+      "must_include_coverage": 0.879,
+      "must_not_violation_rate": 0.025,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 0.925,
+      "avg_judge_input_tokens": 2312.375
+    },
+    "provided:category:unsupported_corpus": {
+      "n": 7,
+      "correctness": 1.0,
+      "correct_full": 1.0,
+      "must_include_coverage": 1.0,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 2460.0
+    },
+    "provided:qset:negative": {
+      "n": 40,
+      "correctness": 0.863,
+      "correct_full": 0.775,
+      "must_include_coverage": 0.879,
+      "must_not_violation_rate": 0.025,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 0.925,
+      "avg_judge_input_tokens": 2312.375
+    },
+    "provided:category:future_or_stale": {
+      "n": 4,
+      "correctness": 0.75,
+      "correct_full": 0.5,
+      "must_include_coverage": 0.75,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 2542.0
+    },
+    "provided:category:insufficient_context": {
+      "n": 8,
+      "correctness": 0.688,
+      "correct_full": 0.625,
+      "must_include_coverage": 0.75,
+      "must_not_violation_rate": 0.125,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 0.625,
+      "avg_judge_input_tokens": 2523.625
+    },
+    "provided:category:false_premise": {
+      "n": 4,
+      "correctness": 0.875,
+      "correct_full": 0.75,
+      "must_include_coverage": 0.917,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 2539.5
+    },
+    "provided:category:personalized_advice": {
+      "n": 6,
+      "correctness": 0.75,
+      "correct_full": 0.5,
+      "must_include_coverage": 0.75,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 1937.833
+    },
+    "provided:category:policy_evasion": {
+      "n": 1,
+      "correctness": 1.0,
+      "correct_full": 1.0,
+      "must_include_coverage": 1.0,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 1456.0
+    },
+    "provided:category:deceptive_request": {
+      "n": 1,
+      "correctness": 1.0,
+      "correct_full": 1.0,
+      "must_include_coverage": 1.0,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 2084.0
+    },
+    "provided:category:prompt_injection": {
+      "n": 6,
+      "correctness": 1.0,
+      "correct_full": 1.0,
+      "must_include_coverage": 1.0,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 2192.333
+    },
+    "provided:category:missing_annex": {
+      "n": 3,
+      "correctness": 1.0,
+      "correct_full": 1.0,
+      "must_include_coverage": 1.0,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 2146.333
+    },
+    "provided:qset:base": {
+      "n": 60,
+      "correctness": 0.967,
+      "correct_full": 0.933,
+      "must_include_coverage": 0.965,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 0.983,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 2333.967
+    },
+    "provided:qset:life": {
+      "n": 20,
+      "correctness": 0.825,
+      "correct_full": 0.65,
+      "must_include_coverage": 0.892,
+      "must_not_violation_rate": 0.0,
+      "faithfulness": 1.0,
+      "citation_support": 1.0,
+      "behavior_appropriate": 1.0,
+      "avg_judge_input_tokens": 3286.95
+    }
+  }
+}

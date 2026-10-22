@@ -163,9 +163,101 @@ def cost():
     plt.close(fig)
 
 
+
+
+# ---------------------------------------------------------------- 토큰·비용 (채점 포함)
+# 단가는 실제 청구 단가가 아니다. 이 프로젝트 모델(gemini-3.6/3.7/3.8-flash)의 단가표를 확인하지 못해,
+# README 1장의 추출 비용과 같은 방식으로 같은 계열 모델 단가 두 가지로 범위를 잡았다(100만 토큰당 입력/출력 USD).
+PRICE_LOW, PRICE_HIGH = (0.30, 2.50), (0.75, 3.75)
+
+
+def tokens_of(run_id):
+    rec_in = rec_out = 0
+    for line in (ROOT / "06_results" / "rag" / f"{run_id}.jsonl").read_text(encoding="utf-8").splitlines():
+        u = json.loads(line)["usage"]
+        rec_in += u["input_tokens"]
+        rec_out += u["output_tokens"]
+    j = load(f"{run_id}__judge.summary.json")
+    return rec_in, rec_out, j["total_input_tokens"], j["total_output_tokens"]
+
+
+def usd(i, o, price):
+    return (i * price[0] + o * price[1]) / 1e6
+
+
+COST_RUNS = [("기본 RAG", ["20261022_104552__basic_rag__both_golden"], C_BASIC),
+             ("Multi-Agent\n개선 전", ["20261021_120715__multi_agent__both_golden", "20261021_165034__multi_agent__both_golden",
+                                       "20261021_165515__multi_agent__both_golden"], C_BEFORE),
+             ("Multi-Agent\n최종", ["20261022_120050__multi_agent__both_golden", "20261022_120056__multi_agent__both_golden",
+                                    "20261022_120124__multi_agent__both_golden"], C_FINAL)]
+
+
+def cost_summary():
+    """270문항 한 번 평가(답변 생성 + 채점)의 토큰·비용. 반복 실행은 평균."""
+    out = []
+    for name, runs, color in COST_RUNS:
+        t = [tokens_of(r) for r in runs]
+        avg = [sum(x[k] for x in t) / len(t) for k in range(4)]
+        out.append({"name": name, "color": color, "rag_in": avg[0], "rag_out": avg[1], "judge_in": avg[2], "judge_out": avg[3],
+                    "usd_low": usd(avg[0] + avg[2], avg[1] + avg[3], PRICE_LOW),
+                    "usd_high": usd(avg[0] + avg[2], avg[1] + avg[3], PRICE_HIGH)})
+    return out
+
+
+def cost_total():
+    """저장소에 기록된 모든 실행(답변 생성)과 채점의 토큰 합계."""
+    rag_in = rag_out = j_in = j_out = 0
+    for p in (ROOT / "06_results" / "rag").glob("*.jsonl"):
+        for line in p.read_text(encoding="utf-8").splitlines():
+            u = json.loads(line)["usage"]
+            rag_in += u["input_tokens"]
+            rag_out += u["output_tokens"]
+    for p in EVAL.glob("*judge*.summary.json"):
+        d = json.loads(p.read_text(encoding="utf-8"))
+        j_in += d["total_input_tokens"]
+        j_out += d["total_output_tokens"]
+    return {"rag_in": rag_in, "rag_out": rag_out, "judge_in": j_in, "judge_out": j_out,
+            "usd_low": usd(rag_in + j_in, rag_out + j_out, PRICE_LOW), "usd_high": usd(rag_in + j_in, rag_out + j_out, PRICE_HIGH)}
+
+
+def tokens_cost():
+    rows = cost_summary()
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9.6, 3.9), gridspec_kw={"width_ratios": [1.25, 1]})
+    names = [r["name"] for r in rows]
+    gen = [(r["rag_in"] + r["rag_out"]) / 1e6 for r in rows]
+    jud = [(r["judge_in"] + r["judge_out"]) / 1e6 for r in rows]
+    ax1.bar(range(3), gen, color=[r["color"] for r in rows], width=0.55, label="답변 생성")
+    ax1.bar(range(3), jud, bottom=gen, color=[r["color"] for r in rows], width=0.55, alpha=0.4, hatch="//",
+            edgecolor=SURFACE, label="채점(Judge)")
+    for x, (g, j) in enumerate(zip(gen, jud)):
+        ax1.text(x, g / 2, f"{g:.2f}M", ha="center", va="center", fontsize=9, color="white", fontweight="bold")
+        ax1.text(x, g + j / 2, f"{j:.2f}M", ha="center", va="center", fontsize=9, color=INK)
+        ax1.text(x, g + j + 0.05, f"{g + j:.2f}M", ha="center", fontsize=9.5, color=INK)
+    ax1.set_xticks(range(3), names)
+    ax1.set_yticks([])
+    ax1.set_ylim(0, max(g + j for g, j in zip(gen, jud)) * 1.15)
+    ax1.spines["bottom"].set_color(GRID)
+    ax1.set_title("270문항 한 번 평가의 토큰 (진한 색 = 답변 생성, 빗금 = 채점)", loc="left", fontsize=10, color=INK)
+    lo = [r["usd_low"] for r in rows]
+    hi = [r["usd_high"] for r in rows]
+    ax2.bar(range(3), hi, color=[r["color"] for r in rows], width=0.55, alpha=0.35)
+    ax2.bar(range(3), lo, color=[r["color"] for r in rows], width=0.55)
+    for x, (a, b) in enumerate(zip(lo, hi)):
+        ax2.text(x, b + 0.03, f"${a:.2f}~{b:.2f}", ha="center", fontsize=9.5, color=INK)
+    ax2.set_xticks(range(3), names)
+    ax2.set_yticks([])
+    ax2.set_ylim(0, max(hi) * 1.2)
+    ax2.spines["bottom"].set_color(GRID)
+    ax2.set_title("추정 비용(USD, 참고 단가 두 가지의 범위)", loc="left", fontsize=10, color=INK)
+    fig.savefig(OUT / "final_05_tokens_cost.png")
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     progress()
     compare()
     failures()
     cost()
+    tokens_cost()
     print("저장:", ", ".join(sorted(p.name for p in OUT.glob("final_*.png"))))
+    print(json.dumps({"runs": cost_summary(), "total": cost_total()}, ensure_ascii=False, indent=1, default=float))

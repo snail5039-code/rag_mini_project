@@ -6,6 +6,21 @@
 
 > 이 문서의 값(child 크기, 재검색 횟수 N, `max_parents` 등)은 **제안 초안**입니다. 실험 결과로 바뀔 수 있고, 확정이 필요한 항목은 마지막 장에 모았습니다.
 
+## 현재 최종 설정 (v7 + 구조 개선)
+
+실험으로 확정한 설정입니다. 실험 과정과 수치는 [report.md](report.md), 실행 방법은 [how_to_run.md](how_to_run.md)를 보세요.
+
+| 구성 | 설정 | 근거 |
+|---|---|---|
+| 청킹 | Parent-Child (parent: 용어·조항·소제목 구조 단위, child: ~300자·겹침 60, 제목 prefix) | 검색 Hit@5 0.993 (Recursive 최고 0.921) |
+| 검색 | child Vector(cosine) top 8 → parent 최대 5개. 범위 필터와 함께 쓸 때는 HNSW 대신 정확 검색 | Vector가 BM25·Hybrid·MMR보다 높음. HNSW는 좁은 범위에서 결과가 0건이 되는 경우가 있었음([agent_fixes_1022.md](agent_fixes_1022.md)) |
+| 임베딩 | `gemini-embedding-2`, 1536차원 | pgvector HNSW 2,000차원 한도 |
+| 파이프라인 | Multi-Agent (80자 이상 질문 분해 → 검색 → 평가 → 피드백 → 개선 → 재검색 최대 2회, 새 근거가 없으면 즉시 종료) | 270문항 3회 Judge 정확성 0.792 → 0.883 |
+| 답변 Agent | 질문 요소 점검표 + 보류·되묻기 안내 규칙, `gemini-3.7-flash` | 제공 세트 Judge 정확성 0.906~0.922 |
+| 나머지 Agent | `gemini-3.6-flash` | |
+
+아래 본문은 설계 당시의 계획이며, 위 표와 다른 부분은 위 표가 최종입니다.
+
 **담당** (기획서 기준): PDF 추출 박의혁 / 청킹·임베딩과 Multi-Agent RAG 정원하 / 골든셋 QA 한용님
 
 ---
@@ -145,7 +160,7 @@ MMR을 실험에서 쓰더라도 DB에 저장된 벡터를 꺼내서 계산하�
 
 ## 2. 질의 실행 — 멀티 Agent 흐름
 
-![멀티 Agent 흐름](images/03_agent_flow.png)
+현재 구성의 흐름도는 [agent_graph.md](agent_graph.md)를 보세요(질문 분해, 문맥 정리, 새 근거 없음 종료가 반영돼 있습니다).
 
 ### Agent 역할 (기획서 기준)
 

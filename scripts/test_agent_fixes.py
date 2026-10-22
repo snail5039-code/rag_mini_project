@@ -2,7 +2,7 @@
 
     PYTHONIOENCODING=utf-8 python scripts/test_agent_fixes.py
 (A) 범위를 좁힌 벡터 검색이 k개를 채워 돌려줌  (B) 재검색 전에 평가가 고른 문서만 남김
-(C) 새 parent가 0개면 평가 없이 바로 답변  (D) 응답 유형을 코드가 확정
+(C) 새 parent가 0개면 평가 없이 바로 답변  (D) 부적절·모호 판정의 응답 유형을 코드가 확정(core_answered는 기록만)
 """
 import sys
 from pathlib import Path
@@ -97,11 +97,11 @@ def main():
         # (D) 응답 유형 확정
         cases = [
             ("out_of_scope", "answer", True, "answer"),
-            ("out_of_scope", "answer", False, "abstain"),
+            ("out_of_scope", "answer", False, "answer"),
             ("inappropriate", "answer", True, "refuse"),
             ("ambiguous", "answer", True, "clarify"),
-            ("sufficient", "answer", False, "abstain"),
-            ("insufficient", "correct", False, "abstain"),
+            ("sufficient", "answer", False, "answer"),
+            ("insufficient", "correct", False, "correct"),
             ("sufficient", "answer", True, "answer"),
             ("sufficient", "clarify", False, "clarify"),
         ]

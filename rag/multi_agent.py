@@ -71,7 +71,6 @@ missing에는 재검색으로 찾아야 할 정보를 구체적으로 적습니�
 판정 기준은 질문이 실제로 묻는 것뿐입니다. 질문이 묻지 않은 세부(계산식, 배경 설명 등)가 문서에 없다는 이유로 insufficient로 판정하지 않습니다.
 질문이 '어떻게 적어야 하나', '어떻게 답해야 하나', '맞는 설명인가'처럼 방법·판단을 묻고 판단에 필요한 사실(수치, 조항, 정의)이 문서에 있으면 sufficient입니다. 방법이나 응답 지침이 문서에 따로 적혀 있지 않다는 이유만으로 out_of_scope나 insufficient로 판정하지 않습니다.
 단, 질문의 대상(상품·약관·계좌)이 없어 답이 대상마다 달라지면 위 규칙과 상관없이 ambiguous이고, 개인 맞춤 추천·규정 우회·기만 요청은 inappropriate입니다.
-대상이 특정된 질문에서 직접 묻는 값(수치·비율·기간·기준일)이 문서에 없으면 out_of_scope입니다.
 {COMMON_RULES}"""
 
 FEEDBACK_PROMPT = f"""당신은 피드백 Agent입니다. 평가 결과와 지금까지의 검색어·검색된 문서 제목을 보고,
@@ -299,12 +298,10 @@ class MultiAgentRAG:
 
     @staticmethod
     def decide_type(evaluation: dict, final: dict) -> str:
-        """응답 유형을 코드로 확정한다. 평가의 범위 밖·부적절·모호 판정은 그대로 따르고,
-        answer·correct인데 핵심을 답하지 못했다고 스스로 밝히면 abstain으로 바꾼다."""
+        """응답 유형을 코드로 확정한다. 평가의 부적절·모호 판정은 그대로 따른다.
+        core_answered=false -> abstain 전환은 270문항 3회에서 5번 중 4번 틀려 끄고, core_answered는 기록만 한다."""
         if not evaluation.get("degraded") and evaluation["decision"] in FORCED_TYPE:
             return FORCED_TYPE[evaluation["decision"]]
-        if final["response_type"] in ("answer", "correct") and not final.get("core_answered", True):
-            return "abstain"
         return final["response_type"]
 
     # -------------------------------------------------------------- 분기 (오케스트레이터의 종료 조건)
